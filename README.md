@@ -11,7 +11,7 @@ El código está en inglés y el texto, en castellano.
 | 1 | Presentación del curso y el modelo VAR: representación, estimación y pronóstico | [`session1/`](session1/) |
 | 2 | VAR bayesianos: prior de Minnesota, Gibbs, *fan charts*, escenarios y la pandemia | [`session2/`](session2/) |
 | 3 | VAR estructurales: identificación por ceros y por signos, IRF, FEVD y descomposición histórica | [`session3/`](session3/) |
-| 4 | VAR no lineales: Threshold VAR y TVP-VAR con volatilidad estocástica | próximamente |
+| 4 | Modelos no lineales: Threshold VAR (El Niño), volatilidad estocástica y TVP-VAR | [`session4/`](session4/) |
 | 5 | Componentes no observados: tendencia, ciclo y brecha del producto | próximamente |
 
 ## Cómo empezar
@@ -80,6 +80,12 @@ cd macro-econometrics-course
 uv sync
 ```
 
+### Si ya tenías el entorno instalado
+
+El curso usa MacroPy 0.3.2 y `plotly` desde la sesión 4. Para actualizar un entorno anterior basta
+con repetir la instalación: `bash setup_env.sh` (o `.\setup_env.ps1`), o `uv sync`. En un
+codespace ya creado, en la terminal: `pip install --user -r requirements.txt`.
+
 ## Comprobar que todo funciona
 
 Cualquiera sea la opción elegida, esto lo confirma en dos segundos:
@@ -98,13 +104,15 @@ curso, y dice exactamente qué falta si algo no está.
 | `ModuleNotFoundError: No module named 'MacroPy'` | El notebook está usando otro intérprete. Seleccionar el kernel de `.venv` (arriba a la derecha en VS Code). |
 | `ModuleNotFoundError: No module named 'course_data'` | El kernel arrancó fuera de la carpeta de la sesión. Abrir el notebook desde ella; desde la terminal, `cd session1` antes de abrir Jupyter. |
 | El instalador rechaza `macropy` | La versión de Python no es 3.11. Verificar con `python --version`. |
+| `check_setup.py` dice que MacroPy es anterior a 0.3.2, o que falta `plotly` | El entorno es de antes de la actualización. Repetir `bash setup_env.sh` (o `uv sync`; en Codespaces, `pip install --user -r requirements.txt`). |
+| Las superficies 3D de la sesión 4 no aparecen | Se ven en VS Code, Codespaces y JupyterLab, no en la vista estática de GitHub. Si la celda falla con `No module named 'plotly'`, repetir la instalación. |
 | Mis números no coinciden con las diapositivas | Se usó `load(refresh=True)`, que trae los datos de hoy con las revisiones del BCRP. Con `load()` se vuelve a la copia congelada. |
 
 ## Datos
 
 Todo el curso usa una sola base, [`data/macro_peru.csv`](data/macro_peru.csv):
-14 series trimestrales de Perú y de Estados Unidos, del BCRP y de FRED, en
-niveles. Es una copia congelada, así que todos reproducen exactamente los números
+18 series trimestrales de Perú, de Estados Unidos y del Pacífico, del BCRP, de
+FRED y de NOAA, en niveles (incluido el PBI desestacionalizado con X-13, `pbi_sa`). Es una copia congelada, así que todos reproducen exactamente los números
 de las diapositivas, con o sin internet. El código, la unidad, la fuente y la
 fecha de descarga de cada serie están en
 [`data/diccionario.csv`](data/diccionario.csv).
