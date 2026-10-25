@@ -1,0 +1,3 @@
+# Dependencias extra de la carpeta bolivia/ (además del requirements.txt del curso)
+openpyxl   # lee los Excel .xlsx del INE
+xlrd       # lee el Excel antiguo .xls (IPC base 1991)
