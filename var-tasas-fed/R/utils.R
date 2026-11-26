@@ -62,7 +62,7 @@ COL_TRAMO <- c("3M" = "#1b6ca8", "2Y" = "#3b9ab2", "5Y" = "#e1a33b",
                "10Y" = "#d1495b", "30Y" = "#6a3d9a")
 
 # Etiquetas legibles
-ETIQ <- c(ffr = "Fed funds efectiva", ffr_meta = "Fed funds meta", y3m = "3M", y6m = "6M",
+ETIQ <- c(ffr = "Fed funds efectiva", ffr_meta = "Fed funds meta", y3m = "3M", y6m = "6M", y3y = "3Y", y7y = "7Y", y20y = "20Y",
           y1y = "1Y", y2y = "2Y", y5y = "5Y", y10y = "10Y", y30y = "30Y",
           ip = "Producción industrial (log×100)", cpi = "IPC (log×100)",
           bcom = "Commodities BCOM (log×100)", unemp = "Desempleo (%)",

@@ -319,3 +319,18 @@ proxy_bootstrap <- function(v, z, j, H = 48, escala = 0.25, nboot = 500, semilla
   dr <- draws[, , ok, drop = FALSE]; dimnames(dr) <- list(NULL, v$nombres, NULL)
   list(base = base, draws = dr, H = H, nboot_ok = sum(ok), impacto = setNames(s0, v$nombres))
 }
+
+# --- Descomposición histórica (Cholesky) -----------------------------------
+# Contribución del choque j a la variable k en t: sum_{i=0}^{t-1} Theta_i[k, j] e_{t-i, j}
+# Devuelve un arreglo T x N(variables) x N(choques) y la parte determinística (base).
+descomp_historica <- function(v) {
+  TT <- v$TT; N <- v$N; P <- t(chol(v$Sigma))
+  E <- t(solve(P, t(v$U)))
+  Phi <- ma_coef(v$B, N, v$p, TT - 1)
+  Theta <- array(0, c(N, N, TT)); for (i in 1:TT) Theta[, , i] <- Phi[, , i] %*% P
+  contrib <- array(0, c(TT, N, N))
+  for (t in 1:TT) for (i in 0:(t - 1)) contrib[t, , ] <- contrib[t, , ] + sweep(Theta[, , i + 1], 2, E[t - i, ], `*`)
+  base <- v$Yd - apply(contrib, c(1, 2), sum)
+  dimnames(contrib) <- list(NULL, v$nombres, v$nombres); colnames(base) <- v$nombres
+  list(contrib = contrib, base = base)
+}
