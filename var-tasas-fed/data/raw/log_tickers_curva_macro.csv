@@ -1,0 +1,8 @@
+"ticker","var","frecuencia","nombre","estado"
+"USGG3YR Index","y3y","DAILY","US Generic Govt 3 Yr","OK"
+"USGG7YR Index","y7y","DAILY","US Generic Govt 7 Yr","OK"
+"USGG20YR Index","y20y","DAILY","US Generic Govt 20 Yr","OK"
+"CPI XYOY Index","core_cpi_a","MONTHLY","US CPI Urban Consumers Less Fo","OK"
+"PCE CYOY Index","core_pce_a","MONTHLY","US Personal Consumption Expend","OK"
+"NFP T Index","nfp","MONTHLY","US Employees on Nonfarm Payrol","OK"
+"CPTICHNG Index","capu","MONTHLY","US Capacity Utilization % of T","OK"
