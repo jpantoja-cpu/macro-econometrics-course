@@ -74,16 +74,23 @@ Script: `R/17_noticias_macro.R` (descarga en `R/16_descarga_noticias.R`). Detall
 
 ## Cómo correr
 
-| Paso | Dónde | Qué |
-|---|---|---|
-| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R`, `R/08_descarga_futuros.R`, `R/11_descarga_curva_macro.R`, `R/13_descarga_vix.R`, `R/14_descarga_acm.R` y `R/16_descarga_noticias.R` (Source en RStudio). Guardan los CSV en `data/raw/`; luego `git add`, `commit` y `push`. |
-| 2 | Cualquier PC con R | `R/00_paquetes.R` una vez; luego `R/run_all.R` (≈2 minutos). |
+**Actualizar los datos (PC de la oficina, con la Terminal Bloomberg abierta)**
 
-Paquetes: `ggplot2`, `patchwork`, `urca`, `tseries`, `sandwich`, `lmtest`, `zoo`. El VAR, el bootstrap, la FEVD y el BVAR están programados en `R/var_funciones.R`, sin dependencias de paquetes de VAR, para que cada paso quede a la vista.
+1. En RStudio, abrir `R/actualizar_datos.R` y presionar **Source**. Corre las 6 descargas (unos 5 minutos) y al final muestra un resumen OK/FALLÓ.
+2. Doble clic en **`subir_datos.bat`**. Sube solo `data/raw/` y descarta los resultados que la PC haya regenerado; si algo falla, muestra el error.
+
+**Regenerar los resultados (cualquier PC con R)**
+
+- `R/00_paquetes.R` una vez; luego `R/run_all.R` (unos 3 minutos).
+- Regla del proyecto: **desde la oficina se suben solo datos; los resultados (`output/`) se regeneran y versionan de un solo lado**. Así el repositorio no se llena de cambios falsos por fuentes o redondeos distintos entre Windows y Linux. Si se corrió `run_all.R` en la oficina, `subir_datos.bat` (o `git restore .`) deja la copia igual a GitHub.
+
+Paquetes: `ggplot2`, `patchwork`, `urca`, `tseries`, `sandwich`, `lmtest`, `zoo`. El VAR, el bootstrap, la FEVD, el BVAR y el proxy SVAR están programados en `R/var_funciones.R`, sin paquetes de VAR, para que cada paso quede a la vista.
 
 ## Estructura
 
 ```
+subir_datos.bat            sube data/raw a GitHub con un doble clic (Windows)
+R/actualizar_datos.R       corre todas las descargas de Bloomberg (01, 08, 11, 13, 14, 16)
 R/01_descarga_bloomberg.R  descarga y validación de tickers (Rblpapi)
 R/02_base_mensual.R        promedios mensuales, logs, interpolación de oct-2025
 R/03_inspeccion.R          paneles por serie, raíz unitaria, curva, colinealidad

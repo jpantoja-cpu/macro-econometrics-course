@@ -44,6 +44,7 @@ print(do.call(rbind, lapply(split(datos, datos$var), function(d)
   row.names = FALSE)
 blpDisconnect(con)
 
-cat("\nListo. Archivo guardado en:\n  ", archivo, "\n\n",
-    "Ahora, en la ventana de comandos (desde la carpeta var-tasas-fed):\n\n",
-    "  git pull\n  git add data/raw\n  git commit -m \"VIX y MOVE Bloomberg\"\n  git push\n\n", sep = "")
+# Mensaje final (se omite cuando corre dentro de actualizar_datos.R)
+if (!isTRUE(getOption("vtf_lote")))
+  cat("\nListo. Datos guardados en data/raw/.\n",
+      "Para subirlos a GitHub: doble clic en subir_datos.bat (carpeta var-tasas-fed).\n\n", sep = "")

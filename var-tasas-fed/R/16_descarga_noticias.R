@@ -84,5 +84,7 @@ if (!is.null(bed)) {
 }
 blpDisconnect(con)
 
-cat("\nListo. Ahora, en la ventana de comandos (desde la carpeta var-tasas-fed):\n\n",
-    "  git pull\n  git add data/raw\n  git commit -m \"Noticias macro Bloomberg\"\n  git push\n\n", sep = "")
+# Mensaje final (se omite cuando corre dentro de actualizar_datos.R)
+if (!isTRUE(getOption("vtf_lote")))
+  cat("\nListo. Datos guardados en data/raw/.\n",
+      "Para subirlos a GitHub: doble clic en subir_datos.bat (carpeta var-tasas-fed).\n\n", sep = "")
