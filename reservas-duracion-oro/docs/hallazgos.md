@@ -72,3 +72,34 @@ Para 1997-2026 (338 meses, R² = 0,29):
 **Lectura para la gestión de reservas:**
 - El oro protege poco frente a una Fed restrictiva en el corto plazo: el día de la sorpresa cae junto con los bonos.
 - Su relación de largo plazo con las tasas reales hoy es mucho más débil que en el pasado. Los modelos que proyectan el oro solo con tasas reales y dólar hoy lo explican peor.
+
+## 3. Ingreso a 12 meses bajo escenarios de la Fed (script 04)
+
+**Enfoque.** Se proyecta la tasa de la Fed (EFFR) mes a mes en cuatro escenarios:
+- **Mercado:** la trayectoria de los futuros de fed funds hasta el mes 6; después se mantiene.
+- **Pausa:** la EFFR actual se mantiene.
+- **Recortes:** −100 pb en 12 meses.
+- **Alzas:** +150 pb en 12 meses.
+
+La letra de cada plazo rinde la EFFR esperada en su horizonte más un diferencial constante (`b(k)`), medido con la curva del 26-11-2026. Resultados por cada 100 millones de USD, sin montos del BCB.
+
+**Datos del 26-11-2026:**
+- EFFR en 3,88%. Los futuros la llevan a 4,43% en 6 meses: **el mercado descuenta alzas.**
+- Letras de 3 meses en 4,26%, 6 meses en 4,47%, 1 año en 4,55% y 2 años en 4,64%.
+- **Hoy las letras rinden más que la EFFR esperada** (b(3M) = +23 pb), al revés que el promedio histórico (−20 a −30 pb).
+
+**Diferencia de retorno a 12 meses frente a la estrategia actual (letras de 1 mes renovadas), en pb:**
+
+| | Mercado | Pausa | Recortes | Alzas |
+|---|---|---|---|---|
+| Letras 3M | +14 | +14 | +15 | +14 |
+| Letras 6M | +16 | +17 | +18 | +16 |
+| 1 año | +7 | +52 | +108 | −32 |
+| 2 años | +13 | +113 | +271 | −120 |
+
+**Lectura.**
+- **Retorno de la estrategia actual:** 3,5% a 4,9% según el escenario, y 4,5% en el de mercado.
+- **Pasar a letras de 3 a 6 meses** gana unos 15 pb en todos los escenarios.
+- **Alargar a 1 o 2 años** es una apuesta a que la Fed no suba tanto como descuenta el mercado.
+
+**Limitaciones:** el diferencial de cada plazo se supone constante; la estrategia actual se aproxima con letras de 1 mes (PL rinde 4,10% con letras de 1 a 4 meses); el escenario de mercado se mantiene plano después del mes 6.
