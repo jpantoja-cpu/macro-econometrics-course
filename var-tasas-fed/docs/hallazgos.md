@@ -99,9 +99,65 @@ Archivo `output/figuras/robustez_irf.png`.
 | ARCH (12 rezagos) | Se rechaza en la ecuación del IPC (A y B) e IP/2Y (B) | Volatilidad cambiante. No afecta la consistencia de las IRF puntuales. |
 | Sesgo del bootstrap | En algunos horizontes medios la IRF puntual queda fuera de la banda 68% (p. ej., 10Y a 24 meses en A: 5.4 vs [−2.6, 5.1]) | Sesgo de muestra pequeña en VAR casi integrados: las réplicas son menos persistentes que la estimación. Mejora pendiente: bootstrap con corrección de sesgo de Kilian (1998). |
 
-## 7. Pendientes / siguientes pasos
+## 7. Ejercicio con la EFFR y sorpresas de mercado (futuros de fed funds)
 
-1. Identificación con instrumento externo: sorpresas de futuros de fed funds en días FOMC (Gertler-Karadi), descargables de Bloomberg (`FF1 Comdty`, `FF2 Comdty`), o separar choques "target" y "path" (Gürkaynak-Sack-Swanson).
+**Por qué.** La identificación por orden (Cholesky) supone qué variable reacciona primero. Con los futuros de fed funds se mide directamente la parte *inesperada* de cada decisión el día del anuncio, y con eso se gana muestra: 269 anuncios del FOMC entre 1994 y 2026, frente a 234 meses en la especificación A.
+
+### 7.1 Datos y construcción
+
+- **Futuros:** genéricos FF1 a FF6 de Bloomberg, diarios, 1988-12 a 2026-11, todos validados (`data/raw/log_tickers_futuros.csv`). FF1 implica 3,88%, igual a la EFFR del día.
+- **Calendario FOMC** (`data/fomc_fechas.csv`): 272 anuncios de 1994 a 2026, 262 programados y 10 entre reuniones.
+  - **Verificación:** los 92 cambios de la meta de la fed funds desde 1994 en Bloomberg (`FDTR`) caen todos en una fecha del calendario. Las fechas de 2021-2024 coinciden con una lista pública.
+  - **Pendiente:** cruzar las reuniones *sin* cambio de tasa anteriores a 2021 con las páginas de la Fed.
+  - **Excluidos de la base:** 2001-09-17 (reapertura tras el 11-S), 2007-08-17 (solo tasa de descuento) y 2020-03-16 (anuncio de domingo en plena crisis COVID).
+- **Sorpresa target** (Kuttner 2001): Δ tasa implícita de FF1 × D/(D−d). En los últimos 7 días del mes se usa FF2. Si el anuncio cae el primer día hábil del mes, la víspera se toma de FF2.
+- **Sorpresa path:** Δ tasa implícita de FF4 (contrato a 3 meses), menos la parte explicada por la sorpresa target.
+- **Ventana:** diaria, de cierre a cierre. Incluye otras noticias del día; no hay historia intradía larga en Bloomberg.
+- **Validación con la EFFR:** una sorpresa target de 25 pb mueve la EFFR 33 pb entre la víspera y el día siguiente (IC 90%: 22-44). La sorpresa mide lo que efectivamente pasa con la tasa de mercado.
+
+### 7.2 Estudio de eventos (día del anuncio)
+
+Efecto de una sorpresa de 25 pb, en pb (`output/tablas/eventos_coeficientes.csv`):
+
+| Tramo | Target 1994-2007 | Path 1994-2007 | Target 2008-2026 | Path 2008-2026 |
+|---|---|---|---|---|
+| 3M | 17,4 | 10,3 | 18,1 | 3,1 |
+| 2Y | 7,9 | 31,9 | 11,3 | 41,8 |
+| 5Y | 2,0 | 31,9 | 9,6 | 37,6 |
+| 10Y | −0,8 | 24,3 | 6,6 | 26,9 |
+| 30Y | −2,2 | 16,2 | 3,4 | 11,9 |
+
+- **La tasa de hoy mueve el tramo corto; la trayectoria mueve el mediano y el largo.** Antes de 2008, una sorpresa en la tasa actual no movía el 10Y ni el 30Y. Una sorpresa sobre la trayectoria esperada movía el 10Y 24 pb. Es el mismo resultado de Gürkaynak, Sack y Swanson (2005), replicado con estos datos.
+- **Esperado vs. inesperado** (Kuttner 2001, 1994-2008): la parte esperada de un cambio de meta casi no mueve la curva (3,5 pb en el 3M). La parte inesperada mueve el 3M 16,6 pb (t = 10), el 2Y 10 pb, el 5Y 6 pb y el 10Y 3 pb (no significativo). Los mercados ya descuentan lo anunciado.
+- **Persistencia en 20 días hábiles:** el efecto target sobre 3M-2Y se mantiene o crece. El efecto path sobre el 10Y y el 30Y se revierte parcialmente: en el 10Y pasa de 24 a 7 pb y en el 30Y llega a 0 en 20 días.
+- **Asimetría (1994-2007):** las sorpresas restrictivas se transmiten al 2Y y al 5Y; las expansivas casi no.
+  - Una sorpresa alcista de 25 pb sube el 2Y 23 pb; una bajista lo baja solo 3 pb (p = 0,001). En el 5Y: 18,5 vs. ≈0 (p = 0,006).
+  - Se mantiene usando solo reuniones programadas y sin sorpresas mayores a 20 pb.
+  - En el 3M y en la EFFR no hay asimetría.
+  - Cautela: son 35 sorpresas positivas y 41 negativas.
+
+### 7.3 VAR con instrumento externo (EFFR como política)
+
+Las sorpresas se agregan por mes con la ponderación de Gertler y Karadi (2015): una sorpresa el día d de un mes de D días pesa (D−d+1)/D en ese mes y (d−1)/D en el siguiente, porque las tasas del VAR son promedios mensuales. **Sin esa ponderación el instrumento es débil** (F ≈ 2); con ella, F = 49.
+
+| Especificación | F 1ª etapa | 3M | 2Y | 5Y | 10Y | 30Y |
+|---|---|---|---|---|---|---|
+| P1: EFFR, 1988-2008, target | 49,2 | 14,6 | 12,8 | 2,9 | −2,7 | −4,6 |
+| P2: EFFR, 1988-2026, target | 16,1 | 22,1 | 15,3 | 5,7 | 0,1 | −2,1 |
+| P3: 6M, 1988-2026, FF4 | 11,5 | 19,5 | 18,8 | 11,8 | 4,9 | 0,2 |
+| Cholesky A (sección 4.1) | — | 16,7 | 14,3 | 9,5 | 5,8 | 3,1 |
+
+Respuesta al impacto en pb ante +25 pb en la variable de política.
+
+- **Con la EFFR y toda la muestra (P2) el instrumento es fuerte** (F = 16), así que sí se puede usar la EFFR con más datos si el choque se identifica con los futuros.
+- **Con identificación de mercado, un alza de la EFFR no sube las tasas largas al impacto.** El 10Y no se mueve y el 30Y cae 2-5 pb. Cholesky daba +6 pb en el 10Y: atribuía a la Fed movimientos del tramo largo que vienen de otras noticias del mismo mes.
+- **El aplanamiento es mucho más fuerte que con Cholesky:** 3M +22 pb y 30Y −2 pb.
+- Coincide con el estudio de eventos: el tramo largo responde a la trayectoria esperada, no a la tasa de hoy. Que el 30Y caiga es consistente con un canal de credibilidad: si la Fed sube más de lo esperado, el mercado espera menos inflación futura.
+- **Dinámica:** a 12 meses la EFFR sigue subiendo (+42 pb en P2) y el 10Y sube con rezago (+4 a +15 pb, con bandas amplias).
+
+## 8. Pendientes / siguientes pasos
+
+1. ~~Instrumento externo con futuros de fed funds~~ (hecho, sección 7). Pendiente: cruzar con la web de la Fed las reuniones sin cambio de tasa anteriores a 2021, y probar ventanas intradía si se consiguen datos.
 2. Bootstrap con corrección de sesgo (Kilian 1998).
 3. Proyecciones locales dependientes del estado (recesión/expansión) para separar asimetría de ciclo.
 4. Shadow rate de Wu-Xia para usar la fed funds en la muestra completa.

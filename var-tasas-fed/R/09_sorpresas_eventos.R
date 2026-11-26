@@ -71,7 +71,7 @@ ev <- do.call(rbind, lapply(seq_len(nrow(fomc)), function(i) {
 ev$excluir_base <- as.logical(ev$excluir_base)
 ev$periodo <- ifelse(ev$fecha_evento <= as.Date("2007-12-31"), "1994-2007",
                ifelse(ev$fecha_evento <= as.Date("2015-11-30") | (ev$fecha_evento >= as.Date("2020-03-01") & ev$fecha_evento <= as.Date("2022-02-28")),
-                      "ZLB", "2008-2026 fuera del ZLB"))
+                      "2008-2015 y 2020-2022 (crisis y ZLB)", "2016-2019 y 2022-2026"))
 # Sorpresa path: FF4 ortogonalizado respecto de target (muestra base)
 b <- ev[!ev$excluir_base & !is.na(ev$ff4_pb), ]
 mp <- lm(ff4_pb ~ target_pb, data = b)
@@ -183,12 +183,22 @@ gs <- ggplot(ev, aes(fecha_evento)) + geom_hline(yintercept = 0, colour = "grey6
        x = NULL, y = "Puntos básicos") + tema_limpio()
 guardar_fig(gs, "sorpresas_serie", ancho = 10, alto = 4)
 
-# Sorpresas mensuales (suma en el mes) para el proxy SVAR ----------------------------
-ev$mes <- as.Date(format(ev$fecha_evento, "%Y-%m-01"))
+# Sorpresas mensuales para el proxy SVAR (ponderación de Gertler y Karadi 2015) ----------
+# Las tasas del VAR son promedios mensuales: una sorpresa el día d de un mes de D días
+# afecta solo (D − d + 1)/D del promedio de ese mes y el resto, (d − 1)/D, del mes
+# siguiente. Sumar las sorpresas sin ponderar da un instrumento débil (F ≈ 2).
 evb <- ev[!ev$excluir_base, ]
-meses <- seq(as.Date("1994-01-01"), max(ev$mes), by = "month")
-zm <- data.frame(fecha = meses,
-                 target_pb = sapply(meses, function(m) sum(evb$target_pb[evb$mes == m])),
-                 ff4_pb = sapply(meses, function(m) sum(evb$ff4_pb[evb$mes == m], na.rm = TRUE)),
-                 path_pb = sapply(meses, function(m) sum(evb$path_pb[evb$mes == m], na.rm = TRUE)))
+meses <- seq(as.Date("1994-01-01"), as.Date(format(max(ev$fecha_evento), "%Y-%m-01")), by = "month")
+pondera <- function(col) {
+  z <- setNames(rep(0, length(meses)), as.character(meses))
+  for (i in seq_len(nrow(evb))) {
+    s <- evb[[col]][i]; if (is.na(s)) next
+    f <- evb$fecha_evento[i]; m <- as.Date(format(f, "%Y-%m-01")); m2 <- seq(m, by = "month", length.out = 2)[2]
+    Dm <- as.numeric(format(m2 - 1, "%d")); d <- as.numeric(format(f, "%d"))
+    z[as.character(m)] <- z[as.character(m)] + s * (Dm - d + 1) / Dm
+    if (as.character(m2) %in% names(z)) z[as.character(m2)] <- z[as.character(m2)] + s * (d - 1) / Dm
+  }
+  unname(z)
+}
+zm <- data.frame(fecha = meses, target_pb = pondera("target_pb"), ff4_pb = pondera("ff4_pb"), path_pb = pondera("path_pb"))
 write.csv(zm, ruta("data", "sorpresas_mensuales.csv"), row.names = FALSE)

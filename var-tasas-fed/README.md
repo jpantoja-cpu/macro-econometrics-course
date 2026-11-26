@@ -20,11 +20,24 @@
 
 Detalle de decisiones, tests fallidos y lectura económica: **[docs/hallazgos.md](docs/hallazgos.md)**.
 
+## Ejercicio con la EFFR y sorpresas de mercado
+
+![Estudio de eventos](output/figuras/eventos_efecto_por_tramo.png)
+
+Con los futuros de fed funds (FF1-FF4) se mide la parte **inesperada** de cada una de las 269 decisiones del FOMC entre 1994 y 2026. Esa sorpresa se usa como instrumento para un VAR con la **EFFR** como tasa de política.
+
+1. **Lo esperado ya está en precios.** Solo la parte inesperada de un cambio de meta mueve la curva (Kuttner): 25 pb inesperados suben el 3M 17 pb y el 2Y 10 pb.
+2. **La tasa de hoy mueve el tramo corto; la trayectoria mueve el largo.** Una sorpresa sobre la tasa actual no mueve el 10Y ni el 30Y. Una sorpresa sobre la trayectoria (FF4) de 25 pb sube el 2Y 32-42 pb y el 10Y 24-27 pb.
+3. **VAR con EFFR y toda la muestra (1988-2026):** el instrumento es fuerte (F = 16). Un alza de 25 pb sube el 3M 22 pb y el 2Y 15 pb, deja el 10Y sin cambio y baja el 30Y 2 pb: aplanamiento fuerte. Cholesky sobreestimaba la transmisión al tramo largo.
+4. **Asimetría en el día del anuncio (1994-2007):** las sorpresas restrictivas suben el 2Y y el 5Y; las expansivas casi no los mueven (p < 0,01).
+
+Scripts: `R/08_descarga_futuros.R` (Bloomberg), `R/09_sorpresas_eventos.R`, `R/10_proxy_svar.R`. Detalle en [docs/hallazgos.md](docs/hallazgos.md), sección 7.
+
 ## Cómo correr
 
 | Paso | Dónde | Qué |
 |---|---|---|
-| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R` (Source en RStudio). Guarda `data/raw/bloomberg_tasas.csv`; luego `git add`, `commit` y `push`. |
+| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R` y `R/08_descarga_futuros.R` (Source en RStudio). Guardan los CSV en `data/raw/`; luego `git add`, `commit` y `push`. |
 | 2 | Cualquier PC con R | `R/00_paquetes.R` una vez; luego `R/run_all.R` (≈2 minutos). |
 
 Paquetes: `ggplot2`, `patchwork`, `urca`, `tseries`, `sandwich`, `lmtest`, `zoo`. El VAR, el bootstrap, la FEVD y el BVAR están programados en `R/var_funciones.R`, sin dependencias de paquetes de VAR, para que cada paso quede a la vista.
@@ -39,6 +52,9 @@ R/04_var_base.R            VAR A (1988-2007, fed funds) y B (muestra completa, 2
 R/05_asimetria_lp.R        proyecciones locales con choques positivos y negativos
 R/06_precios_bonos.R       de rendimientos a precios (revaluación y duración); validación con índices TR
 R/07_robustez.R            BVAR, rezagos, orden, muestra, sin 3M
+R/08_descarga_futuros.R    descarga FF1-FF6 (Rblpapi)
+R/09_sorpresas_eventos.R   sorpresas target/path, estudio de eventos FOMC, Kuttner, asimetría
+R/10_proxy_svar.R          VAR con instrumento externo (EFFR y 6M)
 R/var_funciones.R          funciones propias (VAR, Cholesky, bootstrap, FEVD, BVAR, LP)
 R/utils.R                  rutas y estilo gráfico (fondo blanco, Arial)
 output/figuras, output/tablas, docs/hallazgos.md
@@ -57,3 +73,6 @@ output/figuras, output/tablas, docs/hallazgos.md
 | `lp_asimetria_*.png` | Alza vs recorte en proyecciones locales |
 | `precios_bonos_*.png` | Respuesta de precios por tramo |
 | `robustez_irf.png` | Comparación de especificaciones |
+| `sorpresas_serie.png` | Sorpresas target y path en cada anuncio |
+| `eventos_*.png` | Estudio de eventos: efecto por tramo, dispersión, persistencia diaria |
+| `proxy_irf_P*.png`, `proxy_vs_cholesky.png` | VAR con instrumento externo y comparación con Cholesky |

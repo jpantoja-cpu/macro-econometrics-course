@@ -9,8 +9,9 @@
 #   P2: política = EFFR, VAR 1988-01 a 2026-10 (muestra completa),
 #       instrumento = sorpresa target. En el ZLB la EFFR casi no se mueve:
 #       se reporta para mostrar qué pasa con más datos usando la EFFR.
-#   P3: política = 2Y, muestra completa, instrumento = sorpresa FF4 (target + path),
-#       que sí tiene variación en el ZLB.
+#   P3: política = 6M, muestra completa, instrumento = sorpresa FF4 (target + path),
+#       que sí tiene variación en el ZLB. (Con el 2Y como política el instrumento es
+#       débil, F ≈ 7; con el 6M, F ≈ 11.)
 # Se reporta el F de primera etapa (robusto): F < 10 = instrumento débil.
 # Bandas: wild bootstrap recursivo (Rademacher), 68% y 90%.
 
@@ -32,8 +33,8 @@ ESP <- list(
             vars = c("ip", "cpi", "bcom", "ffr", CURVA), pol = "ffr", z = "target_pb"),
   P2 = list(nombre = "P2: EFFR, muestra completa, instrumento target", hasta = NA,
             vars = c("ip", "cpi", "bcom", "ffr", CURVA), pol = "ffr", z = "target_pb"),
-  P3 = list(nombre = "P3: 2Y, muestra completa, instrumento FF4", hasta = NA,
-            vars = c("ip", "cpi", "bcom", "y2y", "y3m", "y5y", "y10y", "y30y"), pol = "y2y", z = "ff4_pb")
+  P3 = list(nombre = "P3: 6M, muestra completa, instrumento FF4", hasta = NA,
+            vars = c("ip", "cpi", "bcom", "y6m", "y3m", "y2y", "y5y", "y10y", "y30y"), pol = "y6m", z = "ff4_pb")
 )
 
 corre <- function(k) {
@@ -56,7 +57,7 @@ guardar_tabla(do.call(rbind, lapply(px, `[[`, "fe")), "proxy_primera_etapa")
 tab <- do.call(rbind, lapply(px, `[[`, "tab")); guardar_tabla(tab, "proxy_irf")
 print(do.call(rbind, lapply(px, `[[`, "fe")), row.names = FALSE)
 
-res_h <- tab[tab$h %in% c(0, 12, 24) & tab$variable %in% c("ffr", CURVA), ]
+res_h <- tab[tab$h %in% c(0, 12, 24) & tab$variable %in% c("ffr", "y6m", CURVA), ]
 res_h <- data.frame(espec = res_h$espec, variable = etiq(res_h$variable), h = res_h$h, irf_pb = round(100 * res_h$irf, 1),
                     banda68 = sprintf("[%.1f, %.1f]", 100 * res_h$q16, 100 * res_h$q84))
 guardar_tabla(res_h, "proxy_resumen_pb"); print(res_h, row.names = FALSE)
