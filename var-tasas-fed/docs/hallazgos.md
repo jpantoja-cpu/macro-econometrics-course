@@ -211,12 +211,71 @@ Cambio del rendimiento en pb, reconstruido con los factores (muestra completa, 1
 - En la muestra completa la EFFR está en el ZLB en 2009-2015 y 2020-2022. Se mitiga con el instrumento (F = 15,9).
 - La inflación entra como IPC general interanual. La subyacente (IPC y PCE) ya está descargada para una prueba de robustez.
 
-## 9. Pendientes / siguientes pasos
+## 9. ¿Expectativas de tasas o prima por plazo? (script 15)
+
+**Enfoque.** El rendimiento a n años se separa en la expectativa de la tasa corta promedio de los próximos n años (componente neutral al riesgo) y la prima por plazo, es decir, lo que se cobra por el riesgo de mantener el bono largo. La prima es la de Adrian, Crump y Moench (2013), que publica la Fed de Nueva York (`ACMTP02/05/10 Index`, diaria desde 1988).
+
+- **Construcción de la expectativa:** Bloomberg no tiene los rendimientos neutrales al riesgo de ACM (los tickers `ACMRNY*` y `ACMY*` fallaron). Se construye como **rendimiento de mercado (USGG) − prima ACM**. Difiere del componente publicado por la Fed solo por el error de ajuste del modelo y por usar rendimientos par en vez de cupón cero: unos pocos pb.
+- **Niveles de la prima a 10 años:** 181 pb en promedio en 1990-2007, 75 pb en 2008-2019 y −20 pb en 2020-2026. El último mes está en 79 pb: volvió a niveles previos a la pandemia.
+
+### 9.1 Episodios (`acm_descomposicion_10y.png`, `acm_episodios.csv`)
+
+| Episodio | EFFR (pb) | 10Y (pb) | Expectativa (pb) | Prima (pb) |
+|---|---|---|---|---|
+| Conundrum (2004-06 a 2006-06) | +397 | +38 | +210 | **−172** |
+| Taper tantrum (2013-04 a 2013-09) | −6 | +107 | −12 | **+119** |
+| Alzas (2021-12 a 2023-10) | +525 | +334 | +225 | +109 |
+| Recortes (2023-10 a 2026-10) | −145 | +33 | −14 | **+47** |
+
+- **El "conundrum" de Greenspan fue una caída de la prima.** Las expectativas sí subieron con la Fed, pero la prima cayó casi lo mismo, y el 10Y quedó casi igual.
+- **El taper tantrum fue casi todo prima,** sin cambio de tasas.
+- **2022-23:** dos tercios del alza del 10Y fueron expectativas y un tercio prima.
+- **Desde 2023-10** la Fed recortó 145 pb y aun así el 10Y subió 33 pb, porque la prima subió 47 pb. Ese es el factor "nivel" que la macro de corto plazo no explicaba en la sección 8.
+
+### 9.2 Días FOMC (`acm_eventos_fomc.png`, `acm_eventos_fomc.csv`)
+
+Efecto de una sorpresa de 25 pb sobre cada componente del 10Y, en pb:
+
+| | Target 1994-2007 | Target 2008-2026 | Path 1994-2007 | Path 2008-2026 |
+|---|---|---|---|---|
+| Expectativa 10Y | +4,7 | +12,0 | +24,6 | +39,8 |
+| Prima 10Y | **−5,5** | **−5,4** | −0,3 | −12,9 |
+
+- **Una sorpresa restrictiva sube las expectativas y *baja* la prima.** El efecto es significativo en todos los plazos y en ambas submuestras (t ≈ 3-5).
+- **Esto explica por qué el 30Y cae ante un alza de la EFFR** (secciones 7 y 8): el mercado lee una Fed más dura como menos riesgo de inflación futura y exige menos compensación por plazo.
+- **Las sorpresas de trayectoria (path) mueven casi solo las expectativas.**
+
+### 9.3 VAR mensual (`acm_var_irf.png`, `acm_politica_proxy.png`, `acm_var_fevd.csv`)
+
+**Especificación:** [desempleo, inflación, EFFR, VIX, MOVE, expectativa 10Y, prima 10Y], 1990-02 a 2026-10, p = 2, Cholesky.
+
+- **Política (+25 pb en la EFFR):** la expectativa 10Y sube 12,7 pb y la prima baja 8,4 pb al impacto. Con el instrumento de mercado (F = 25) da prácticamente lo mismo: +11,8 y −9,2 pb. La prima vuelve a cero en unos 2 años.
+- **MOVE (volatilidad de bonos, +11,5 puntos):** la prima sube 6-9 pb y se mantiene; no mueve las expectativas. **El MOVE explica 14-24% de la varianza de la prima.**
+- **VIX (+3,9 puntos):** baja las expectativas 4-9 pb (se esperan recortes y hay fuga hacia la calidad) y apenas mueve la prima.
+- **Inflación (+0,34 pp):** sube las expectativas unos 5 pb a 12-24 meses; no mueve la prima en el corto plazo.
+- **Descomposición de varianza a 48 meses:**
+  - **Expectativas:** la política explica 17% y el VIX 13%.
+  - **Prima:** el MOVE explica 24% y la política 6%; el resto (~50%) son choques propios.
+
+### 9.4 ¿Qué movió el 10Y en 2022-23 y después? (`acm_descomposicion_historica.png`, `acm_reparto_episodios.csv`)
+
+- **2021-12 a 2023-10:**
+  - La expectativa subió 225 pb: política +118 y inflación +66.
+  - La prima subió 109 pb: choques propios +170 y volatilidad de bonos (MOVE) +76, compensados en parte por la política (−82) y la inflación (−40).
+- **2023-10 a 2026-10:** la prima subió 47 pb, en buena parte por inflación (+64). La inflación persistente ya no se lee como transitoria y el mercado empieza a cobrar más por el riesgo de plazo.
+
+### 9.5 Limitaciones
+
+- La expectativa es un residuo (rendimiento − prima), así que hereda cualquier error del modelo ACM.
+- Otras medidas de prima (Kim-Wright, por ejemplo) dan niveles distintos, aunque la dinámica es parecida. Vale la pena contrastar.
+- El VAR identifica por orden (Cholesky). Solo el choque de política tiene una versión con instrumento, y coincide con Cholesky.
+
+## 10. Pendientes / siguientes pasos
 
 1. ~~Instrumento externo con futuros de fed funds~~ (hecho, sección 7). Pendiente: cruzar con la web de la Fed las reuniones sin cambio de tasa anteriores a 2021, y probar ventanas intradía si se consiguen datos.
 2. Bootstrap con corrección de sesgo (Kilian 1998).
 3. Proyecciones locales dependientes del estado (recesión/expansión) para separar asimetría de ciclo.
 4. Shadow rate de Wu-Xia para usar la fed funds en la muestra completa.
 5. Parte 2: sorpresas de datos macro (IPC, nóminas) vs. sorpresas del FOMC en el estudio de eventos diario.
-6. Parte 3: descomponer el 10Y en expectativas y prima por plazo (ACM, `ACMTP10 Index`), para explicar el factor nivel.
+6. ~~Parte 3: expectativas vs. prima por plazo~~ (hecho, sección 9). Pendiente: contrastar con Kim-Wright.
 7. Robustez de la sección 8 con inflación subyacente y con el MOVE en lugar del VIX.

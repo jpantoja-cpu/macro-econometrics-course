@@ -91,10 +91,11 @@ hl <- rbind(data.frame(fecha = d10$fecha, serie = "Rendimiento 10Y (Bloomberg)",
             data.frame(fecha = d10$fecha, serie = "Prima por plazo 10Y", valor = d10$tp10))
 EPIS <- data.frame(nombre = c("Conundrum", "Taper tantrum", "Alzas 2022-23", "Recortes 2024-26"),
                    ini = as.Date(c("2004-06-01", "2013-04-01", "2021-12-01", "2023-10-01")),
-                   fin = c(as.Date(c("2006-06-01", "2013-09-01", "2023-10-01")), max(d10$fecha)))
+                   fin = c(as.Date(c("2006-06-01", "2013-09-01", "2023-10-01")), max(d10$fecha)),
+                   vj = c(1.5, 1.5, 1.5, 3.3))
 g <- ggplot(hl, aes(fecha, valor, colour = serie)) +
   geom_rect(data = EPIS, aes(xmin = ini, xmax = fin, ymin = -Inf, ymax = Inf), inherit.aes = FALSE, fill = "#e1a33b", alpha = 0.12) +
-  geom_text(data = EPIS, aes(x = ini, y = Inf, label = nombre), inherit.aes = FALSE, vjust = 1.5, hjust = 0, size = 2.8, colour = "grey30", family = FUENTE) +
+  geom_text(data = EPIS, aes(x = ini, y = Inf, label = nombre, vjust = vj), inherit.aes = FALSE, hjust = 0, size = 2.8, colour = "grey30", family = FUENTE) +
   geom_hline(yintercept = 0, colour = "grey60") + geom_line(linewidth = 0.6) +
   scale_colour_manual(values = c("#0b3c5d", "#1b6ca8", "#d1495b")) +
   labs(title = "El rendimiento a 10 años: expectativas de tasas vs prima por plazo",
