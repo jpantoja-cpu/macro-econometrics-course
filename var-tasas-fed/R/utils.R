@@ -21,6 +21,7 @@ raiz_proyecto <- function() {
 
 RAIZ <- raiz_proyecto()
 ruta <- function(...) file.path(RAIZ, ...)
+dir.create(ruta("data", "raw"), recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta("output", "figuras"), recursive = TRUE, showWarnings = FALSE)
 dir.create(ruta("output", "tablas"), recursive = TRUE, showWarnings = FALSE)
 
