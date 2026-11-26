@@ -20,18 +20,22 @@ HLP <- 36; PLP <- 6
 res <- readRDS(ruta("output", "var_base.rds"))
 CURVA <- c("y3m", "y2y", "y5y", "y10y", "y30y")
 
-lp_espec <- function(k) {
+lp_espec <- function(k, hasta = NULL) {
   r <- res[[k]]; d <- r$d
   ch <- merge(d, r$choque, by = "fecha")                 # alinea fechas
+  if (!is.null(hasta)) ch <- ch[ch$fecha <= as.Date(hasta), ]
   x <- ch$e * ch$sd_pp                                    # choque en pp de la tasa de política
   ctrl <- rezagos_df(ch[, r$e$vars], PLP)
-  out <- lapply(c(r$e$politica, CURVA), function(v) {
+  out <- lapply(unique(c(r$e$politica, CURVA)), function(v) {
     l <- lp_asimetrica(ch[[v]], x, ctrl, H = HLP)
     cbind(espec = k, variable = v, l)
   })
   list(tab = do.call(rbind, out), x = x, fechas = ch$fecha)
 }
-lp <- lapply(c("B", "A"), lp_espec); names(lp) <- c("B", "A")
+lp <- list(B = lp_espec("B"), A = lp_espec("A"),
+           # Control: choque B hasta 2019-12, sin el episodio recorte 2020 -> alzas 2022
+           B_hasta2019 = lp_espec("B", "2019-12-01"))
+lp$B_hasta2019$tab$espec <- "B_hasta2019"
 tab <- do.call(rbind, lapply(lp, `[[`, "tab")); rownames(tab) <- NULL
 guardar_tabla(tab, "lp_asimetria_coeficientes")
 
@@ -51,7 +55,7 @@ fig_asim <- function(k) {
                          m = 25 * t2$b_pos, lo = 25 * (t2$b_pos - t2$se_pos), hi = 25 * (t2$b_pos + t2$se_pos)),
               data.frame(t2[, c("variable", "h")], tipo = "Recorte de 25 pb (con signo invertido)",
                          m = 25 * t2$b_neg, lo = 25 * (t2$b_neg - t2$se_neg), hi = 25 * (t2$b_neg + t2$se_neg)))
-  vv <- c(res[[k]]$e$politica, CURVA)
+  vv <- unique(c(res[[k]]$e$politica, CURVA))
   dd$variable <- factor(etiq(dd$variable), levels = etiq(vv))
   sig <- t2[t2$p_igualdad < 0.10, c("variable", "h")]
   sig$variable <- factor(etiq(sig$variable), levels = etiq(vv))
@@ -70,6 +74,9 @@ fig_asim <- function(k) {
 }
 guardar_fig(fig_asim("B"), "lp_asimetria_B", ancho = 10, alto = 6.5)
 guardar_fig(fig_asim("A"), "lp_asimetria_A", ancho = 10, alto = 6.5)
+res$B_hasta2019 <- res$B
+guardar_fig(fig_asim("B_hasta2019") + labs(title = "¿Simetría? Choque de la especificación B, muestra hasta 2019 (sin 2020-2022)"),
+            "lp_asimetria_B_hasta2019", ancho = 10, alto = 6.5)
 
 # Resumen: horizontes donde se rechaza simetría al 10%
 rs <- aggregate(p_igualdad ~ espec + variable, data = tab, FUN = function(p) sum(p < 0.10))

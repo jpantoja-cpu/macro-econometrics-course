@@ -1,0 +1,5 @@
+"espec","test","estadistico","gl","p_valor"
+"A","Portmanteau ajustado (h=24)",1649.36548588607,1458,0.000322602721096403
+"A","LM correlación serial (h=12)",1309.91373293741,972,2.01367945660838e-12
+"B","Portmanteau ajustado (h=24)",1430.90331939402,1152,3.11629952452181e-08
+"B","LM correlación serial (h=12)",976.308575060977,768,4.43155513102808e-07

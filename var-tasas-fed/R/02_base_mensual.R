@@ -32,8 +32,28 @@ base <- base[order(base$fecha), ]
 en_log <- intersect(c("ip", "cpi", "bcom", grep("^tr_", names(base), value = TRUE)), names(base))
 for (v in en_log) base[[v]] <- 100 * log(base[[v]])
 
+# Huecos aislados en series mensuales macro: octubre 2025 no se publicó (cierre del
+# gobierno de EE.UU.; el BLS no recolectó el IPC ni la encuesta de hogares de ese mes).
+# Se interpola linealmente (en log×100 para el IPC) solo huecos de 1 mes, y se registra.
+interp <- data.frame()
+for (v in intersect(c("ip", "cpi", "unemp"), names(base))) {
+  x <- base[[v]]; na <- which(is.na(x))
+  na <- na[na > 1 & na < length(x) & !is.na(x[pmax(na - 1, 1)]) & !is.na(x[pmin(na + 1, length(x))])]
+  if (length(na)) {
+    x[na] <- (x[na - 1] + x[na + 1]) / 2
+    interp <- rbind(interp, data.frame(serie = v, fecha = base$fecha[na], valor_interpolado = x[na]))
+    base[[v]] <- x
+  }
+}
+if (nrow(interp)) {
+  write.csv(interp, ruta("data", "meses_interpolados.csv"), row.names = FALSE)
+  message("Meses interpolados (hueco de 1 mes): ", paste(interp$serie, format(interp$fecha, "%Y-%m"), collapse = "; "))
+}
+
 # Fin de muestra: último mes con todas las series núcleo
-nucleo <- c("ffr", "y3m", "y1y", "y2y", "y5y", "y10y", "y30y", "ip", "cpi", "bcom")
+# (y1y no es núcleo: USGG12M no existe entre 2001-08 y 2008-06 porque el Tesoro suspendió
+#  la emisión de letras a 1 año; dejarla como núcleo cortaría la muestra)
+nucleo <- c("ffr", "y3m", "y2y", "y5y", "y10y", "y30y", "ip", "cpi", "bcom")
 falt <- setdiff(nucleo, names(base))
 if (length(falt)) stop("Faltan series núcleo en la descarga: ", paste(falt, collapse = ", "))
 completo <- complete.cases(base[, nucleo])

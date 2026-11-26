@@ -5,8 +5,9 @@
 #   - Bloque rápido (tasas de mercado): reacciona dentro del mes.
 # Dos especificaciones:
 #   A) Principal: 1988-2007, política = fed funds efectiva (antes del límite inferior cero).
-#   B) Muestra completa: política = tasa a 1 año (Gertler-Karadi 2015), que sí se
-#      mueve en el ZLB por la guía futura y las compras de activos.
+#   B) Muestra completa: política = rendimiento a 2 años (Hanson y Stein 2015), que
+#      sí se mueve en el ZLB por la guía futura y las compras de activos. (La tasa a
+#      1 año de Gertler-Karadi no sirve aquí: USGG12M tiene un hueco 2001-08 a 2008-06.)
 # Choque normalizado a +25 pb sobre la variable de política. En un VAR lineal la
 # respuesta a −25 pb es exactamente el espejo (se reporta igual, para dejarlo claro).
 
@@ -27,8 +28,8 @@ base <- read.csv(ruta("data", "base_mensual.csv")); base$fecha <- as.Date(base$f
 ESPEC <- list(
   A = list(nombre = "A: 1988-2007, fed funds", desde = "1988-01-01", hasta = "2007-12-01",
            vars = c("ip", "cpi", "bcom", "ffr", "y3m", "y2y", "y5y", "y10y", "y30y"), politica = "ffr"),
-  B = list(nombre = "B: muestra completa, tasa 1 año como política", desde = "1988-01-01", hasta = NA,
-           vars = c("ip", "cpi", "bcom", "y1y", "y3m", "y2y", "y5y", "y10y", "y30y"), politica = "y1y")
+  B = list(nombre = "B: muestra completa, 2Y como política", desde = "1988-01-01", hasta = NA,
+           vars = c("ip", "cpi", "bcom", "y2y", "y3m", "y5y", "y10y", "y30y"), politica = "y2y")
 )
 CURVA <- c("y3m", "y2y", "y5y", "y10y", "y30y")
 SPREADS <- list(s10y3m = c(y10y = 1, y3m = -1), s30y2y = c(y30y = 1, y2y = -1))
@@ -93,7 +94,7 @@ for (k in names(res)) {
   r <- res[[k]]
   cap <- sprintf("VAR(%d) en niveles, T=%d, identificación Cholesky. Bandas bootstrap 68%% y 90%% (%d réplicas). Fuente: Bloomberg.",
                  r$p, r$v$TT, r$ib$nboot_ok)
-  g <- graf_irf(r$tab, c(r$e$politica, CURVA), ncol = 3,
+  g <- graf_irf(r$tab, unique(c(r$e$politica, CURVA)), ncol = 3,
                 titulo = sprintf("Respuesta de la curva del Tesoro a un alza de 25 pb (%s)", r$e$nombre),
                 subtitulo = "Un recorte de 25 pb da la misma respuesta con signo opuesto (VAR lineal)", caption = cap)
   guardar_fig(g, paste0("irf_curva_", k), ancho = 10, alto = 6.5)

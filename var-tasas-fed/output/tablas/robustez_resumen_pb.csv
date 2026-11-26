@@ -1,0 +1,35 @@
+"espec","variable","irf_pb.0","irf_pb.12","irf_pb.24"
+"Base A: VAR(6) MCO","3M",16.7,20.5,9.4
+"Base A: VAR(6) MCO","2Y",14.3,16.9,6
+"Base A: VAR(6) MCO","5Y",9.5,11.9,5.6
+"Base A: VAR(6) MCO","10Y",5.8,8.4,5.4
+"Base A: VAR(6) MCO","30Y",3.1,3.7,4.3
+"BVAR Minnesota (lambda=0.08)","3M",17.2,10,-4.9
+"BVAR Minnesota (lambda=0.08)","2Y",15.6,5.7,-4.2
+"BVAR Minnesota (lambda=0.08)","5Y",10.6,3.2,-1.9
+"BVAR Minnesota (lambda=0.08)","10Y",6.2,2.2,-0.1
+"BVAR Minnesota (lambda=0.08)","30Y",3.5,0.8,0
+"VAR(3)","3M",16.9,13.9,2.8
+"VAR(3)","2Y",13.5,10.6,1.9
+"VAR(3)","5Y",8.6,6.8,2
+"VAR(3)","10Y",4.6,4.3,1.9
+"VAR(3)","30Y",1.7,1.7,1.4
+"VAR(9)","3M",18.2,29.9,35.2
+"VAR(9)","2Y",16.9,22,28.3
+"VAR(9)","5Y",11.8,13.7,19
+"VAR(9)","10Y",7.5,9.4,14.1
+"VAR(9)","30Y",4.1,3.8,8.4
+"Política primero en el orden","3M",17,22.7,14.7
+"Política primero en el orden","2Y",15.7,18.6,10.2
+"Política primero en el orden","5Y",11.2,12.5,7.5
+"Política primero en el orden","10Y",7.5,8.3,5.8
+"Política primero en el orden","30Y",4.7,3.2,3.7
+"Muestra completa con fed funds (ZLB)","3M",20.5,30.1,13.4
+"Muestra completa con fed funds (ZLB)","2Y",15.3,20.7,11.3
+"Muestra completa con fed funds (ZLB)","5Y",9.7,10.9,8.3
+"Muestra completa con fed funds (ZLB)","10Y",5.5,5.2,5.6
+"Muestra completa con fed funds (ZLB)","30Y",3.5,0.5,2.8
+"Sin tasa 3M","2Y",12.3,5,-8.9
+"Sin tasa 3M","5Y",7.3,5.4,-2.5
+"Sin tasa 3M","10Y",4,5.5,1.6
+"Sin tasa 3M","30Y",2.2,3.2,3.8

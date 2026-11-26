@@ -102,7 +102,7 @@ guardar_tabla(colin, "colinealidad_ffr_3m"); print(colin)
 # Tabla de cómo entra cada variable
 tab_vars <- data.frame(
   variable = series, etiqueta = etiq(series),
-  transformacion = ifelse(series %in% c("ip", "cpi", "bcom"), "100 × log(promedio o dato mensual)", "Nivel en %, promedio mensual"),
+  transformacion = ifelse(series %in% c("ip", "cpi", "bcom"), "100 × log(promedio o dato mensual)", ifelse(series == "y2y", "Nivel en %, promedio mensual (política en la variante B)", "Nivel en %, promedio mensual")),
   en_VAR = ifelse(series %in% c("ip", "cpi", "bcom", "ffr", "y3m", "y2y", "y5y", "y10y", "y30y"), "Sí (niveles)",
-           ifelse(series == "y1y", "Indicador de política en la variante de muestra completa", "No")))
+           ifelse(series == "y1y", "No (hueco 2001-08 a 2008-06)", "No")))
 guardar_tabla(tab_vars, "variables_transformacion")
