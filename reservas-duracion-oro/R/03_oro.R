@@ -31,9 +31,14 @@ ETQ_R <- c(d_oro = "Oro (%)", d_real10 = "Tasa real 10 años (pb)", d_dxy = "Dó
 # 1) Días de FOMC y de datos macro --------------------------------------------------
 ev <- read.csv(ruta_vtf("data", "sorpresas_fomc.csv")); ev$fecha_evento <- as.Date(ev$fecha_evento)
 ev <- ev[!as.logical(ev$excluir_base), ]
-D$s_target <- 0; D$s_path <- 0
-D$s_target[match(ev$fecha_evento, D$fecha)] <- ev$target_pb / 25          # por sorpresa de 25 pb
-D$s_path[match(ev$fecha_evento, D$fecha)] <- ifelse(is.na(ev$path_pb), 0, ev$path_pb / 25)
+# Cada evento se asigna al primer día hábil con dato de oro desde su fecha
+dia_habil <- function(f) D$fecha[pmin(findInterval(f - 1, D$fecha) + 1, nrow(D))]
+asigna <- function(col, fechas, valores) {
+  s <- aggregate(v ~ f, data = data.frame(f = dia_habil(fechas), v = valores), FUN = sum)
+  x <- rep(0, nrow(D)); x[match(s$f, D$fecha)] <- s$v; x
+}
+D$s_target <- asigna("s_target", ev$fecha_evento, ev$target_pb / 25)          # por sorpresa de 25 pb
+D$s_path <- asigna("s_path", ev$fecha_evento, ifelse(is.na(ev$path_pb), 0, ev$path_pb / 25))
 nt <- ruta_vtf("data", "raw", "bloomberg_noticias.csv")
 if (file.exists(nt)) {
   n <- read.csv(nt, stringsAsFactors = FALSE)
@@ -45,8 +50,7 @@ if (file.exists(nt)) {
   pub <- pub[complete.cases(pub) & !(pub$fecha >= as.Date("2020-03-01") & pub$fecha <= as.Date("2020-12-31")), ]
   pub$z <- ave(pub$s, pub$var, FUN = function(v) v / sd(v))
   for (k in c("ipc", "ipc_sub", "nominas")) {
-    s <- aggregate(z ~ fecha, data = pub[pub$var == k, ], FUN = sum)
-    D[[paste0("s_", k)]] <- 0; D[[paste0("s_", k)]][match(s$fecha, D$fecha)] <- s$z
+    D[[paste0("s_", k)]] <- asigna(k, pub$fecha[pub$var == k], pub$z[pub$var == k])
   }
 }
 REG <- intersect(c("s_target", "s_path", "s_ipc", "s_ipc_sub", "s_nominas"), names(D))

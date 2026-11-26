@@ -14,6 +14,11 @@ Análisis de mercado para apoyar decisiones sobre los tramos de reservas inverti
 - Ya descargados en el proyecto hermano `../var-tasas-fed/data/raw/` (se reutilizan): rendimientos del Tesoro, índices total return por tramo, sorpresas del FOMC, VIX, MOVE, breakevens.
 - Nuevos (`R/01_descarga_mercado.R`): oro (XAU, LBMA), tasas reales (TIPS 5Y y 10Y), dólar (DXY), volatilidad del oro (GVZ) e índices de letras del Tesoro.
 
+## Resultados principales
+
+1. **Duración:** sin una visión sobre la Fed, alargar de letras a 2 años paga unos 30 pb al año, con un peor año de −5,6%. Con visión, el efecto es grande y asimétrico: +214 pb sobre la caja si la Fed recorta 50 pb o más, −168 pb si sube. Las letras rinden 20-30 pb menos que la EFFR, que es el costo de su liquidez.
+2. **Oro:** una sorpresa restrictiva de la Fed sobre la trayectoria de tasas baja el oro (−1,8% por 25 pb; −5% en 2021-2026), sube la tasa real y fortalece el dólar. La relación de largo plazo con la tasa real se debilitó mucho desde 2022 (de −17% a −3% por punto porcentual); la relación con el dólar sigue estable.
+
 ## Cómo correr
 
 1. En la PC con Bloomberg: `R/01_descarga_mercado.R` (Source) y luego doble clic en `subir_datos.bat`.
