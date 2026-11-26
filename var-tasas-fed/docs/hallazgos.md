@@ -270,12 +270,80 @@ Efecto de una sorpresa de 25 pb sobre cada componente del 10Y, en pb:
 - Otras medidas de prima (Kim-Wright, por ejemplo) dan niveles distintos, aunque la dinámica es parecida. Vale la pena contrastar.
 - El VAR identifica por orden (Cholesky). Solo el choque de política tiene una versión con instrumento, y coincide con Cholesky.
 
-## 10. Pendientes / siguientes pasos
+## 10. Noticias macro vs. la Fed: estudio de eventos diario (script 17)
+
+**Enfoque** (Gürkaynak, Sack y Swanson 2005; Balduzzi, Elton y Green 2001).
+
+- **Sorpresa de un dato:** primera publicación − mediana de la encuesta de Bloomberg, estandarizada (1 desviación estándar). El signo es positivo cuando la economía sale más fuerte o hay más inflación; por eso se invierte en desempleo y solicitudes de subsidio.
+- **Regresión:** sobre todos los días hábiles de 1998-06 a 2026-11: Δ rendimiento diario (pb) contra las sorpresas de 9 indicadores y contra las sorpresas target y path del FOMC, también estandarizadas.
+- **Excluido:** marzo-diciembre de 2020, porque las sorpresas de la pandemia son órdenes de magnitud mayores.
+- **Datos:** Bloomberg (`ECO_RELEASE_DT`, `ACTUAL_RELEASE`, `BN_SURVEY_MEDIAN`), disponibles desde 1997-98. Para salarios hay datos desde 2010 y para ventas desde 2001.
+
+### 10.1 ¿Qué noticia mueve más la curva? (`noticias_efecto_por_indicador.png`, `noticias_resumen_completa.csv`)
+
+Efecto de una sorpresa de 1 d.e., en pb (1998-2026). `***` p<0,01, `**` p<0,05, `*` p<0,10.
+
+| Noticia | 2Y | 10Y | Forward nominal 5y5y | Prima 10Y (ACM) |
+|---|---|---|---|---|
+| FOMC: sorpresa path | 4,5*** | 2,8*** | 1,5** | −1,2*** |
+| Nóminas | 3,8*** | 3,1*** | 2,3*** | 0,4 |
+| Salarios (desde 2010) | 2,9*** | 3,2*** | 2,7*** | 1,4*** |
+| ISM manufacturero | 2,3*** | 2,4*** | 2,3*** | 1,0*** |
+| FOMC: sorpresa target | 2,3*** | 0,6 | −0,1 | −1,5** |
+| IPC subyacente | 1,7*** | 1,1** | 0,6 | 0,0 |
+| Ventas minoristas | 1,1** | 1,1* | 0,9 | 0,6 |
+| Desempleo | 1,2*** | 0,5 | 0,2 | −0,2 |
+| Solicitudes de subsidio | 0,8*** | 0,9*** | 0,8*** | 0,4** |
+| IPC general | 0,6 | 0,7 | 0,5 | 0,1 |
+| PIB (avance) | 0,3 | 0,2 | 0,1 | 0,6 |
+
+- **En el 2Y, lo que más pesa es la Fed** (sorpresas sobre la trayectoria), seguida de las nóminas.
+- **En el 10Y pesan tanto los datos de empleo y actividad** (nóminas, salarios, ISM) **como la Fed.**
+- **La diferencia está en la prima por plazo:**
+  - Las noticias macro fuertes (ISM, salarios, solicitudes de subsidio) *suben* la prima.
+  - Las sorpresas restrictivas de la Fed la *bajan* (como en la sección 9).
+  - Es decir, una economía fuerte sube la compensación por plazo y una Fed dura la reduce.
+- **El forward nominal 5y5y responde de forma significativa a nóminas, salarios e ISM.** Es la "sensibilidad excesiva" de las tasas largas que documentó GSS (2005).
+- **Desempleo y PIB casi no mueven la curva.** Las nóminas contienen la información del informe de empleo, y el PIB de avance llega con datos ya conocidos.
+
+### 10.2 ¿Cambió la sensibilidad? (`noticias_por_periodo.png`)
+
+- **El IPC pasó a ser protagonista en 2021-2026.** Una sorpresa de 1 d.e. en el IPC general sube el 2Y 4,1 pb y el 10Y 3,0 pb; en 2008-2019 el efecto era nulo.
+  - Como el IPC general y el subyacente salen el mismo día, el efecto conjunto del día del IPC en 2021-2026 es de unos 4,7 pb en el 2Y y 3,1 pb en el 10Y.
+  - En 2021-2026 domina el componente general (energía y alimentos); en 1998-2007 era el subyacente.
+- **El empleo perdió peso relativo:** el efecto de las nóminas en el 2Y pasó de 5,6 pb (1998-2007) a 4,1 (2008-2019) y a 2,8 (2021-2026). El mercado pasó a mirar la inflación más que el empleo.
+- **Las sorpresas de la Fed pesan más que nunca:** una sorpresa path de 1 d.e. sube el 2Y 7,3 pb en 2021-2026, contra 3,6-4,0 antes.
+
+### 10.3 ¿Expectativas de inflación ancladas?
+
+- **En 2021-2026 las sorpresas del IPC no movieron la compensación por inflación de largo plazo:** el swap de inflación 5y5y responde 0,2-0,3 pb y el breakeven 10Y 0,7 pb, ninguno significativo. El forward *nominal* 5y5y sí sube (+2,0 pb con el IPC general), así que el ajuste fue por tasas reales y prima, no por expectativas de inflación.
+- **Una Fed restrictiva baja la inflación esperada de largo plazo:** una sorpresa path de 1 d.e. baja el swap 5y5y 2,4 pb y el breakeven 10Y 1,4 pb (2021-2026). Es una señal de credibilidad.
+
+### 10.4 ¿Qué días se mueve más el 10Y? (`noticias_volatilidad_por_dia.png`)
+
+Desviación estándar del cambio diario del 10Y relativa a los días sin datos relevantes:
+
+| Período | FOMC | IPC | Nóminas | Otros datos | Sin dato |
+|---|---|---|---|---|---|
+| 1998-2007 | 1,32 | 1,24 | **1,55** | 1,25 | 1,00 |
+| 2008-2019 | **1,64** | 1,04 | 1,28 | 1,14 | 1,00 |
+| 2021-2026 | 1,43 | **1,50** | 1,46 | 1,13 | 1,00 |
+
+En cada período el día más volátil es distinto: antes de 2008 el informe de empleo, en 2008-2019 el FOMC (la era de la guía futura) y en 2021-2026 el IPC. En el 2Y el cambio es más marcado: los días de IPC pasaron de 3,5 pb de desviación estándar en 2008-2019 a 10,6 pb en 2021-2026.
+
+### 10.5 Limitaciones
+
+- La ventana es diaria: otras noticias del día contaminan la estimación, y el ISM (10:00) puede coincidir con otros datos.
+- El IPC general y el subyacente salen juntos, así que sus coeficientes por separado son imprecisos. Conviene leer el efecto conjunto del día.
+- La mediana de la encuesta está redondeada: muchas sorpresas de IPC valen 0 (38-40%).
+- 2021-2026 tiene solo 48-57 publicaciones de IPC.
+
+## 11. Pendientes / siguientes pasos
 
 1. ~~Instrumento externo con futuros de fed funds~~ (hecho, sección 7). Pendiente: cruzar con la web de la Fed las reuniones sin cambio de tasa anteriores a 2021, y probar ventanas intradía si se consiguen datos.
 2. Bootstrap con corrección de sesgo (Kilian 1998).
 3. Proyecciones locales dependientes del estado (recesión/expansión) para separar asimetría de ciclo.
 4. Shadow rate de Wu-Xia para usar la fed funds en la muestra completa.
-5. Parte 2: sorpresas de datos macro (IPC, nóminas) vs. sorpresas del FOMC en el estudio de eventos diario.
+5. ~~Parte 2: sorpresas macro vs. FOMC~~ (hecho, sección 10). Pendiente: ventana intradía y otros datos (PCE, JOLTS).
 6. ~~Parte 3: expectativas vs. prima por plazo~~ (hecho, sección 9). Pendiente: contrastar con Kim-Wright.
 7. Robustez de la sección 8 con inflación subyacente y con el MOVE en lugar del VIX.

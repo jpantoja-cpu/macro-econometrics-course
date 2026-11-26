@@ -59,11 +59,24 @@ El 10Y se separa en expectativa de tasas y prima por plazo (Adrian, Crump y Moen
 
 Script: `R/15_prima_plazo.R` (descarga en `R/14_descarga_acm.R`). Detalle en [docs/hallazgos.md](docs/hallazgos.md), sección 9.
 
+## Noticias macro vs. la Fed
+
+![Efecto por noticia](output/figuras/noticias_efecto_por_indicador.png)
+
+El cambio diario de la curva se mide contra las sorpresas de 9 datos macro (publicado − mediana de la encuesta de Bloomberg) y de la Fed, de 1998 a 2026 (Gürkaynak, Sack y Swanson 2005).
+
+1. **En el 2Y manda la Fed** (sorpresa de trayectoria: 4,5 pb por 1 d.e.). **En el 10Y pesan igual el empleo y la actividad** (nóminas 3,1, salarios 3,2, ISM 2,4) y la Fed (2,8).
+2. **Una economía fuerte sube la prima por plazo; una Fed dura la baja.**
+3. **El IPC pasó a ser el dato clave en 2021-2026:** sube el 2Y unos 4-5 pb por 1 d.e. (antes, ~0) y los días de IPC pasaron a ser los más volátiles. El empleo perdió peso relativo.
+4. **Las expectativas de inflación de largo plazo siguieron ancladas:** el swap de inflación 5y5y no reaccionó al IPC en 2021-2026, y una Fed restrictiva lo bajó.
+
+Script: `R/17_noticias_macro.R` (descarga en `R/16_descarga_noticias.R`). Detalle en [docs/hallazgos.md](docs/hallazgos.md), sección 10.
+
 ## Cómo correr
 
 | Paso | Dónde | Qué |
 |---|---|---|
-| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R`, `R/08_descarga_futuros.R`, `R/11_descarga_curva_macro.R`, `R/13_descarga_vix.R` y `R/14_descarga_acm.R` (Source en RStudio). Guardan los CSV en `data/raw/`; luego `git add`, `commit` y `push`. |
+| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R`, `R/08_descarga_futuros.R`, `R/11_descarga_curva_macro.R`, `R/13_descarga_vix.R`, `R/14_descarga_acm.R` y `R/16_descarga_noticias.R` (Source en RStudio). Guardan los CSV en `data/raw/`; luego `git add`, `commit` y `push`. |
 | 2 | Cualquier PC con R | `R/00_paquetes.R` una vez; luego `R/run_all.R` (≈2 minutos). |
 
 Paquetes: `ggplot2`, `patchwork`, `urca`, `tseries`, `sandwich`, `lmtest`, `zoo`. El VAR, el bootstrap, la FEVD y el BVAR están programados en `R/var_funciones.R`, sin dependencias de paquetes de VAR, para que cada paso quede a la vista.
@@ -86,6 +99,8 @@ R/12_factores_curva.R      factores Nelson-Siegel + VAR macro-curva, FEVD, desco
 R/13_descarga_vix.R        VIX y MOVE (Rblpapi)
 R/14_descarga_acm.R        prima por plazo ACM 2/5/10 años (Rblpapi)
 R/15_prima_plazo.R         expectativas vs prima: episodios, eventos FOMC, VAR, descomposición histórica
+R/16_descarga_noticias.R   datos macro con fecha, publicado y mediana de encuesta; breakevens (Rblpapi)
+R/17_noticias_macro.R      sorpresas macro vs FOMC: efecto por noticia y plazo, cambios por período, volatilidad por día
 R/var_funciones.R          funciones propias (VAR, Cholesky, bootstrap, FEVD, BVAR, LP)
 R/utils.R                  rutas y estilo gráfico (fondo blanco, Arial)
 output/figuras, output/tablas, docs/hallazgos.md
@@ -111,3 +126,4 @@ output/figuras, output/tablas, docs/hallazgos.md
 | `mc_irf_factores_*.png`, `mc_desplazamiento_curva_*.png` | Respuesta de los factores y de toda la curva a inflación, desempleo, Fed y VIX |
 | `mc_fevd.png`, `mc_descomposicion_historica.png` | Qué explica cada factor; qué movió la curva desde 2015 |
 | `acm_*.png` | Expectativas vs prima por plazo: historia, días FOMC, VAR, descomposición histórica |
+| `noticias_*.png` | Sorpresas macro vs Fed: efecto por noticia, por plazo, por período y volatilidad por día |
