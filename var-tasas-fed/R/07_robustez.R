@@ -11,7 +11,8 @@
 #   5) Sin la tasa a 3M (casi colineal con la fed funds).
 
 local({
-  cand <- c("R/utils.R", "var-tasas-fed/R/utils.R",
+  # Busca el utils.R de ESTA carpeta (var-tasas-fed), sin importar dónde esté parado RStudio
+  cand <- c(if (file.exists("var-tasas-fed.Rproj")) "R/utils.R", "var-tasas-fed/R/utils.R", "../var-tasas-fed/R/utils.R",
             "C:/Users/jpantoja/Documents/macro-econometrics-course/var-tasas-fed/R/utils.R")
   source(cand[file.exists(cand)][1])
 })

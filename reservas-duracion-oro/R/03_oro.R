@@ -9,7 +9,8 @@
 #    clásica oro–tasa real cambió (p. ej., desde 2022).
 
 local({
-  cand <- c("R/utils.R", "reservas-duracion-oro/R/utils.R",
+  # Busca el utils.R de ESTA carpeta (reservas-duracion-oro), sin importar dónde esté parado RStudio
+  cand <- c(if (file.exists("reservas-duracion-oro.Rproj")) "R/utils.R", "reservas-duracion-oro/R/utils.R", "../reservas-duracion-oro/R/utils.R",
             "C:/Users/jpantoja/Documents/macro-econometrics-course/reservas-duracion-oro/R/utils.R")
   source(cand[file.exists(cand)][1])
 })

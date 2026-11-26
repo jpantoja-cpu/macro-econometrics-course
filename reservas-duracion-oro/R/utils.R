@@ -6,8 +6,13 @@
 # Funciona si: (a) se abrió reservas-duracion-oro.Rproj, (b) el directorio de trabajo es
 # la raíz del repo, o (c) el clon está en la ruta de la oficina.
 raiz_proyecto <- function() {
+  # 1) La carpeta de este mismo utils.R (cuando se carga con source()), sin importar el directorio de trabajo
+  desde_archivo <- NULL
+  for (fr in rev(sys.frames())) if (!is.null(fr$ofile)) { desde_archivo <- dirname(dirname(normalizePath(fr$ofile))); break }
   candidatos <- c(
+    desde_archivo,
     getwd(),
+    file.path(dirname(getwd()), "reservas-duracion-oro"),
     file.path(getwd(), "reservas-duracion-oro"),
     dirname(getwd()),
     "C:/Users/jpantoja/Documents/macro-econometrics-course/reservas-duracion-oro"
