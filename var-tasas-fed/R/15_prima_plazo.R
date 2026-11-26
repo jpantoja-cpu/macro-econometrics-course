@@ -1,7 +1,8 @@
 # 15_prima_plazo.R ------------------------------------------------------
 # ¿El 10Y se mueve por expectativas de tasas o por la prima por plazo?
 # Descomposición de Adrian, Crump y Moench (2013, "ACM"), publicada por la Fed de NY:
-#   rendimiento ACM (n) = rendimiento neutral al riesgo (n) + prima por plazo (n)
+#   rendimiento (n) = expectativa de tasas (neutral al riesgo, n) + prima por plazo (n)
+# Bloomberg trae solo la prima ACM; la expectativa se obtiene como rendimiento − prima.
 # El neutral al riesgo es el promedio esperado de la tasa corta en los próximos n años;
 # la prima por plazo es lo que se cobra por el riesgo de mantener el bono largo.
 #
@@ -29,8 +30,28 @@ ETIQ[c("rny2", "rny5", "rny10", "tp2", "tp5", "tp10", "acmy10", "move", "vix", "
 acm <- read.csv(ruta("data", "raw", "bloomberg_acm.csv"), stringsAsFactors = FALSE)
 acm$fecha <- as.Date(acm$fecha)
 disp <- unique(acm$var)
-if (!all(c("tp10", "rny10") %in% disp)) stop("Faltan ACMTP10/ACMRNY10 en la descarga: revisa data/raw/log_tickers_acm.csv")
+if (!"tp10" %in% disp) stop("Falta ACMTP10 en la descarga: revisa data/raw/log_tickers_acm.csv")
 message("Series ACM disponibles: ", paste(sort(disp), collapse = ", "))
+# Bloomberg solo publica la prima por plazo ACM (ACMTP02/05/10); los rendimientos
+# neutrales al riesgo (ACMRNY) no están. Se construye la expectativa como
+#   expectativa(n) = rendimiento de mercado(n) − prima ACM(n)
+# usando los genéricos USGG2YR/5YR/10YR. Difiere de ACMRNY solo por el error de ajuste
+# del modelo ACM y por usar rendimientos par en vez de cupón cero (unos pocos pb).
+if (!"rny10" %in% disp) {
+  ry <- read.csv(ruta("data", "raw", "bloomberg_tasas.csv"), stringsAsFactors = FALSE)
+  ry <- ry[ry$var %in% c("y2y", "y5y", "y10y"), ]; ry$fecha <- as.Date(ry$fecha)
+  mapa <- c(tp2 = "y2y", tp5 = "y5y", tp10 = "y10y")
+  nuevas <- do.call(rbind, lapply(intersect(names(mapa), disp), function(tpv) {
+    a <- acm[acm$var == tpv, ]; y <- ry[ry$var == mapa[[tpv]], ]
+    m <- merge(a, y[, c("fecha", "valor")], by = "fecha", suffixes = c("", "_y"))
+    data.frame(fecha = m$fecha, ticker = paste(mapa[[tpv]], "− prima ACM"), var = sub("^tp", "rny", tpv),
+               nombre = "Expectativa = rendimiento − prima ACM", frecuencia = "DAILY", valor = m$valor_y - m$valor,
+               fecha_descarga = m$fecha_descarga)
+  }))
+  acm <- rbind(acm[, names(nuevas)], nuevas)
+  disp <- unique(acm$var)
+  message("Expectativas construidas como rendimiento − prima: ", paste(sort(unique(nuevas$var)), collapse = ", "))
+}
 
 # Diario (ancho) para el estudio de eventos
 AD <- reshape(acm[, c("fecha", "var", "valor")], idvar = "fecha", timevar = "var", direction = "wide")
@@ -56,9 +77,14 @@ base$inflacion <- base$cpi - c(rep(NA, 12), head(base$cpi, -12))
 
 # 1) Historia -------------------------------------------------------------------------
 d10 <- base[!is.na(base$tp10), ]
-chk <- data.frame(medida = c("Correlación ACM 10Y vs USGG10YR", "Diferencia media (pb)"),
-                  valor = c(round(cor(d10$rny10 + d10$tp10, d10$y10y), 3), round(100 * mean(d10$rny10 + d10$tp10 - d10$y10y), 1)))
-guardar_tabla(chk, "acm_validacion"); print(chk, row.names = FALSE)
+chk <- data.frame(medida = c("Prima 10Y: promedio 1990-2007 (pb)", "Prima 10Y: promedio 2008-2019 (pb)",
+                             "Prima 10Y: promedio 2020-2026 (pb)", "Prima 10Y: último mes (pb)",
+                             "Correlación de cambios mensuales: Δ10Y vs Δprima", "Correlación de cambios mensuales: Δ10Y vs Δexpectativa"),
+                  valor = round(c(100 * mean(d10$tp10[d10$fecha >= as.Date("1990-01-01") & d10$fecha <= as.Date("2007-12-01")]),
+                                  100 * mean(d10$tp10[d10$fecha >= as.Date("2008-01-01") & d10$fecha <= as.Date("2019-12-01")]),
+                                  100 * mean(d10$tp10[d10$fecha >= as.Date("2020-01-01")]), 100 * tail(d10$tp10, 1),
+                                  cor(diff(d10$y10y), diff(d10$tp10)), cor(diff(d10$y10y), diff(d10$rny10))), 2))
+guardar_tabla(chk, "acm_descriptivo"); print(chk, row.names = FALSE)
 
 hl <- rbind(data.frame(fecha = d10$fecha, serie = "Rendimiento 10Y (Bloomberg)", valor = d10$y10y),
             data.frame(fecha = d10$fecha, serie = "Expectativa de tasas 10Y (neutral al riesgo)", valor = d10$rny10),
@@ -72,8 +98,8 @@ g <- ggplot(hl, aes(fecha, valor, colour = serie)) +
   geom_hline(yintercept = 0, colour = "grey60") + geom_line(linewidth = 0.6) +
   scale_colour_manual(values = c("#0b3c5d", "#1b6ca8", "#d1495b")) +
   labs(title = "El rendimiento a 10 años: expectativas de tasas vs prima por plazo",
-       subtitle = "Descomposición ACM (Fed de Nueva York), promedios mensuales. Sombras = episodios analizados",
-       x = NULL, y = "%", colour = NULL, caption = "Fuente: Bloomberg (ACMRNY10, ACMTP10, USGG10YR).") +
+       subtitle = "Prima ACM (Fed de Nueva York); expectativa = rendimiento − prima. Promedios mensuales; sombras = episodios",
+       x = NULL, y = "%", colour = NULL, caption = "Fuente: Bloomberg (ACMTP10, USGG10YR).") +
   tema_limpio() + guides(colour = guide_legend(nrow = 2))
 guardar_fig(g, "acm_descomposicion_10y", ancho = 10, alto = 5.5)
 
