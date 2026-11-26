@@ -59,3 +59,30 @@ guardar_tabla <- function(df, nombre) {
 # Colores (paleta sobria; un color por tramo de la curva)
 COL_TRAMO <- c("3M" = "#1b6ca8", "2Y" = "#3b9ab2", "5Y" = "#e1a33b",
                "10Y" = "#d1495b", "30Y" = "#6a3d9a")
+
+# Etiquetas legibles
+ETIQ <- c(ffr = "Fed funds efectiva", ffr_meta = "Fed funds meta", y3m = "3M", y6m = "6M",
+          y1y = "1Y", y2y = "2Y", y5y = "5Y", y10y = "10Y", y30y = "30Y",
+          ip = "Producción industrial (log×100)", cpi = "IPC (log×100)",
+          bcom = "Commodities BCOM (log×100)", unemp = "Desempleo (%)",
+          s10y3m = "Pendiente 10Y−3M", s30y2y = "Pendiente 30Y−2Y")
+etiq <- function(x) ifelse(x %in% names(ETIQ), ETIQ[x], x)
+
+# Gráfico de IRF: bandas 90% (claras) y 68% (oscuras); tasas en puntos básicos.
+graf_irf <- function(tab, vars, titulo, subtitulo = NULL, pb = TRUE, ncol = 3, caption = NULL) {
+  d <- tab[tab$variable %in% vars, ]
+  d$variable <- factor(etiq(d$variable), levels = etiq(vars))
+  k <- if (pb) 100 else 1
+  ggplot2::ggplot(d, ggplot2::aes(h)) +
+    ggplot2::geom_hline(yintercept = 0, colour = "grey50", linewidth = 0.3) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = k * q05, ymax = k * q95), fill = "#1b6ca8", alpha = 0.15) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = k * q16, ymax = k * q84), fill = "#1b6ca8", alpha = 0.30) +
+    ggplot2::geom_line(ggplot2::aes(y = k * irf), colour = "#0b3c5d", linewidth = 0.8) +
+    ggplot2::facet_wrap(~variable, scales = "free_y", ncol = ncol) +
+    ggplot2::labs(title = titulo, subtitle = subtitulo, x = "Meses después del choque",
+                  y = if (pb) "Puntos básicos" else "Puntos porcentuales", caption = caption) +
+    tema_limpio()
+}
+
+# Sombras del límite inferior cero (ZLB)
+ZLB <- data.frame(ini = as.Date(c("2008-12-01", "2020-03-01")), fin = as.Date(c("2015-12-01", "2022-03-01")))
