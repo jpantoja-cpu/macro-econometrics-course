@@ -1,0 +1,19 @@
+"regimen","estrategia","n_ventanas","media_12m_pct","p5_12m_pct","p95_12m_pct","exceso_vs_caja_pb"
+"Recortes (−50 pb o más)","Caja (EFFR)",163,4.39,0.68,8.77,0
+"Recortes (−50 pb o más)","Letras 3M",163,4.17,0.81,8.07,-21
+"Recortes (−50 pb o más)","Letras 6M",163,4.61,1.3,8.41,22
+"Recortes (−50 pb o más)","1 año",163,5.29,1.91,9.05,91
+"Recortes (−50 pb o más)","2 años",163,6.53,2.65,10.9,214
+"Recortes (−50 pb o más)","3 años",140,7.54,2.4,12.62,285
+"Estable","Caja (EFFR)",163,1.87,0.07,6.09,0
+"Estable","Letras 3M",163,1.66,0.01,5.41,-21
+"Estable","Letras 6M",163,1.75,0.01,5.58,-12
+"Estable","1 año",163,1.87,-0.04,6.12,0
+"Estable","2 años",163,2.17,-0.47,7.84,30
+"Estable","3 años",163,2.48,-1.27,9.62,61
+"Alzas (+50 pb o más)","Caja (EFFR)",128,3.64,0.49,8.47,0
+"Alzas (+50 pb o más)","Letras 3M",128,3.2,0.31,6.79,-44
+"Alzas (+50 pb o más)","Letras 6M",128,3.07,0.08,6.37,-57
+"Alzas (+50 pb o más)","1 año",128,2.6,-1.34,6.6,-104
+"Alzas (+50 pb o más)","2 años",128,1.96,-3.7,7.86,-168
+"Alzas (+50 pb o más)","3 años",128,1.4,-5.63,8.93,-224
