@@ -33,11 +33,24 @@ Con los futuros de fed funds (FF1-FF4) se mide la parte **inesperada** de cada u
 
 Scripts: `R/08_descarga_futuros.R` (Bloomberg), `R/09_sorpresas_eventos.R`, `R/10_proxy_svar.R`. Detalle en [docs/hallazgos.md](docs/hallazgos.md), sección 7.
 
+## ¿Qué mueve la curva? Factores y macro
+
+![Desplazamiento de la curva](output/figuras/mc_desplazamiento_curva_B.png)
+
+La curva se resume en **nivel, pendiente y curvatura** (Nelson-Siegel), que entran a un VAR con desempleo, inflación, la EFFR y el VIX (Diebold, Rudebusch y Aruoba 2006).
+
+1. **La Fed mueve la pendiente, no el nivel:** un alza de 25 pb sube el 3M 23 pb y el 30Y apenas 2 pb.
+2. **Inflación:** antes de 2008 casi no movía la curva. En la muestra completa un choque de inflación sube el tramo corto 10 pb, porque el mercado anticipa la reacción de la Fed. La inversión de 2022-2023 se explica sobre todo por choques de inflación (212 de 289 pb).
+3. **VIX:** más riesgo baja el tramo corto (−11 pb) y empina la curva. Explica hasta el 17% de la varianza de la pendiente.
+4. **El nivel (más del 90%) no lo explica la macro de corto plazo:** refleja expectativas de largo plazo y la prima por plazo.
+
+Script: `R/12_factores_curva.R` (descargas en `R/11_descarga_curva_macro.R` y `R/13_descarga_vix.R`). Detalle en [docs/hallazgos.md](docs/hallazgos.md), sección 8.
+
 ## Cómo correr
 
 | Paso | Dónde | Qué |
 |---|---|---|
-| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R` y `R/08_descarga_futuros.R` (Source en RStudio). Guardan los CSV en `data/raw/`; luego `git add`, `commit` y `push`. |
+| 1 | PC con Terminal Bloomberg | `R/01_descarga_bloomberg.R`, `R/08_descarga_futuros.R`, `R/11_descarga_curva_macro.R` y `R/13_descarga_vix.R` (Source en RStudio). Guardan los CSV en `data/raw/`; luego `git add`, `commit` y `push`. |
 | 2 | Cualquier PC con R | `R/00_paquetes.R` una vez; luego `R/run_all.R` (≈2 minutos). |
 
 Paquetes: `ggplot2`, `patchwork`, `urca`, `tseries`, `sandwich`, `lmtest`, `zoo`. El VAR, el bootstrap, la FEVD y el BVAR están programados en `R/var_funciones.R`, sin dependencias de paquetes de VAR, para que cada paso quede a la vista.
@@ -55,6 +68,9 @@ R/07_robustez.R            BVAR, rezagos, orden, muestra, sin 3M
 R/08_descarga_futuros.R    descarga FF1-FF6 (Rblpapi)
 R/09_sorpresas_eventos.R   sorpresas target/path, estudio de eventos FOMC, Kuttner, asimetría
 R/10_proxy_svar.R          VAR con instrumento externo (EFFR y 6M)
+R/11_descarga_curva_macro.R  plazos 3Y/7Y/20Y y macro (Rblpapi)
+R/12_factores_curva.R      factores Nelson-Siegel + VAR macro-curva, FEVD, descomposición histórica
+R/13_descarga_vix.R        VIX y MOVE (Rblpapi)
 R/var_funciones.R          funciones propias (VAR, Cholesky, bootstrap, FEVD, BVAR, LP)
 R/utils.R                  rutas y estilo gráfico (fondo blanco, Arial)
 output/figuras, output/tablas, docs/hallazgos.md
@@ -76,3 +92,6 @@ output/figuras, output/tablas, docs/hallazgos.md
 | `sorpresas_serie.png` | Sorpresas target y path en cada anuncio |
 | `eventos_*.png` | Estudio de eventos: efecto por tramo, dispersión, persistencia diaria |
 | `proxy_irf_P*.png`, `proxy_vs_cholesky.png` | VAR con instrumento externo y comparación con Cholesky |
+| `ns_factores.png` | Nivel, pendiente y curvatura vs medidas empíricas |
+| `mc_irf_factores_*.png`, `mc_desplazamiento_curva_*.png` | Respuesta de los factores y de toda la curva a inflación, desempleo, Fed y VIX |
+| `mc_fevd.png`, `mc_descomposicion_historica.png` | Qué explica cada factor; qué movió la curva desde 2015 |

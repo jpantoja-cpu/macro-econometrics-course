@@ -155,9 +155,68 @@ Respuesta al impacto en pb ante +25 pb en la variable de política.
 - Coincide con el estudio de eventos: el tramo largo responde a la trayectoria esperada, no a la tasa de hoy. Que el 30Y caiga es consistente con un canal de credibilidad: si la Fed sube más de lo esperado, el mercado espera menos inflación futura.
 - **Dinámica:** a 12 meses la EFFR sigue subiendo (+42 pb en P2) y el 10Y sube con rezago (+4 a +15 pb, con bandas amplias).
 
-## 8. Pendientes / siguientes pasos
+## 8. ¿Qué mueve la curva? Factores de Nelson-Siegel y macro (script 12)
+
+**Enfoque** (Diebold y Li 2006; Diebold, Rudebusch y Aruoba 2006). La curva de cada mes se resume en tres factores de Nelson-Siegel (λ = 0,0609, plazos en meses):
+
+- **Nivel:** desplazamiento paralelo de toda la curva.
+- **Pendiente:** largo − corto (en este proyecto se reporta como −S, para que sea positiva cuando la curva sube con el plazo).
+- **Curvatura:** el tramo medio respecto de los extremos.
+
+Esos factores entran a un VAR mensual con [desempleo, inflación (IPC, % a/a), EFFR, VIX, nivel, pendiente, curvatura], identificado por Cholesky en ese orden. La macro es lenta; la Fed responde a la macro; el VIX responde a la macro y a la Fed; la curva responde a todo dentro del mes.
+
+### 8.1 Ajuste
+
+- **Plazos:** 3M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y y 30Y. Se usan los disponibles en cada mes: el 1Y tiene un hueco 2001-2008, el 7Y otro 1993-2009 y el 20Y solo existe desde 2020.
+- **Error de ajuste (RMSE):** 4-12 pb por plazo (`ns_ajuste_por_plazo.csv`). El 20Y ajusta peor (15 pb, por encima de la curva), lo que coincide con la conocida "anomalía" del bono a 20 años, que cotiza barato.
+- **Los factores coinciden con sus medidas empíricas:** correlación de 0,98 entre el nivel y el 10Y, 0,995 entre la pendiente y 10Y−3M, y 0,97 entre la curvatura y 2·2Y−3M−10Y.
+- **VAR:** criterios de información → p = 2. Raíz máxima 0,98-0,99. Muestras: A = 1990-2007, B = 1990-2026 (el VIX empieza en 1990).
+
+### 8.2 Respuestas (`mc_irf_factores_*.png`, `mc_desplazamiento_curva_*.png`)
+
+Cambio del rendimiento en pb, reconstruido con los factores (muestra completa, 12 meses después del choque):
+
+| Choque | 3M | 2Y | 10Y | 30Y | Lectura |
+|---|---|---|---|---|---|
+| Política: +25 pb EFFR | +23,5 | +19,7 | +6,6 | +2,3 | Aplanamiento: sube el corto, el largo casi no |
+| Inflación: +0,32 pp (1 d.e.) | +10,1 | +9,8 | +5,2 | +3,5 | Aplanamiento "bajista": la Fed reacciona subiendo el corto |
+| Desempleo: +0,12 pp (1 d.e.) | −3,6 | −4,9 | +0,1 | +2,2 | Empinamiento: el mercado espera recortes |
+| Riesgo: VIX +2,7 puntos (1 d.e.) | −11,5 | −11,0 | −4,7 | −2,3 | Empinamiento "alcista": fuga hacia la calidad y recortes esperados |
+
+- **La política monetaria mueve la pendiente y la curvatura, no el nivel.** Con el instrumento de mercado (F = 15,9) el efecto es más fuerte: la pendiente cae 31 pb al impacto y el nivel *baja* 5 pb. Es la misma conclusión que en la sección 7.
+- **La inflación cambió de papel.** En 1990-2007 un choque de inflación casi no movía la curva (efectos de 1-2 pb, sin significancia a 12 meses). En la muestra completa, por el episodio 2021-2023, sube el tramo corto 10 pb a los 12 meses y aplana la curva.
+- **El VIX explica una parte relevante de la pendiente:** 16-17% de su varianza en 1990-2007 y 4-9% en la muestra completa. Un alza del riesgo baja sobre todo el tramo corto.
+
+### 8.3 Descomposición de varianza (`mc_fevd.png`, `mc_fevd_resumen.csv`)
+
+| Factor (48 meses, 1990-2026) | Desempleo | Inflación | Política | VIX | Choques propios de la curva |
+|---|---|---|---|---|---|
+| Nivel | 1,3 | 4,0 | 0,4 | 1,4 | 92,8 |
+| Pendiente | 10,0 | 10,3 | 16,1 | 9,4 | 54,0 |
+| Curvatura | 13,7 | 5,9 | 6,5 | 11,0 | 62,9 |
+
+- **La pendiente es el factor "macro":** casi la mitad de su varianza viene de la Fed, la inflación, el desempleo y el riesgo.
+- **El nivel casi no lo explica la macro de corto plazo** (más del 90% son choques propios), ni siquiera agregando el VIX. El nivel refleja expectativas de inflación de largo plazo y la prima por plazo, que este VAR no observa. Es la motivación de la parte 3 (descomposición ACM).
+
+### 8.4 Descomposición histórica (`mc_descomposicion_historica.png`, `mc_reparto_episodios.csv`)
+
+- **2021-12 a 2023-10:**
+  - La pendiente cayó 289 pb (la curva se invirtió). De eso, 212 pb se atribuyen a choques de inflación y 109 pb a la política monetaria.
+  - El nivel subió 299 pb, casi todo (335 pb) por choques propios de la curva, no por la macro. Es coherente con un alza de la prima por plazo y de las expectativas de largo plazo.
+- **2023-10 a 2026-10:** la pendiente se recuperó 221 pb, sobre todo (184 pb) porque se desvanecieron los choques de inflación.
+
+### 8.5 Limitaciones
+
+- La identificación de inflación, desempleo y VIX es por orden (Cholesky). Solo el choque de política tiene una versión con instrumento de mercado.
+- En la muestra completa la EFFR está en el ZLB en 2009-2015 y 2020-2022. Se mitiga con el instrumento (F = 15,9).
+- La inflación entra como IPC general interanual. La subyacente (IPC y PCE) ya está descargada para una prueba de robustez.
+
+## 9. Pendientes / siguientes pasos
 
 1. ~~Instrumento externo con futuros de fed funds~~ (hecho, sección 7). Pendiente: cruzar con la web de la Fed las reuniones sin cambio de tasa anteriores a 2021, y probar ventanas intradía si se consiguen datos.
 2. Bootstrap con corrección de sesgo (Kilian 1998).
 3. Proyecciones locales dependientes del estado (recesión/expansión) para separar asimetría de ciclo.
 4. Shadow rate de Wu-Xia para usar la fed funds en la muestra completa.
+5. Parte 2: sorpresas de datos macro (IPC, nóminas) vs. sorpresas del FOMC en el estudio de eventos diario.
+6. Parte 3: descomponer el 10Y en expectativas y prima por plazo (ACM, `ACMTP10 Index`), para explicar el factor nivel.
+7. Robustez de la sección 8 con inflación subyacente y con el MOVE en lugar del VIX.
