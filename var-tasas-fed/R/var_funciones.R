@@ -269,3 +269,53 @@ rezagos_df <- function(Y, p) {
   colnames(out) <- paste0(rep(colnames(Y), p), "_L", rep(1:p, each = ncol(Y)))
   as.data.frame(out)
 }
+
+# --- SVAR con instrumento externo (proxy SVAR) ------------------------------
+# Stock y Watson (2012), Mertens y Ravn (2013), Gertler y Karadi (2015).
+# El vector de impacto del choque de política es proporcional a cov(u, z), donde u
+# son los residuos reducidos y z la sorpresa de mercado. Se normaliza para que la
+# variable de política suba `escala` en el impacto.
+proxy_impacto <- function(U, z, j, escala = 0.25) {
+  ok <- !is.na(z)
+  s <- as.vector(crossprod(U[ok, , drop = FALSE], z[ok]))   # ∝ cov(u, z)
+  s * escala / s[j]
+}
+primera_etapa <- function(U, z, j) {
+  ok <- !is.na(z)
+  m <- lm(U[ok, j] ~ z[ok])
+  V <- sandwich::vcovHC(m, type = "HC1")
+  tt <- coef(m)[2] / sqrt(V[2, 2])
+  data.frame(n = sum(ok), coef = unname(coef(m)[2]), F_robusto = unname(tt^2),
+             R2 = summary(m)$r.squared)
+}
+irf_desde_impacto <- function(B, N, p, H, s) {
+  Phi <- ma_coef(B, N, p, H)
+  t(sapply(1:(H + 1), function(h) Phi[, , h] %*% s))
+}
+# Wild bootstrap recursivo: residuos y sorpresa se multiplican por el mismo ±1 (Rademacher)
+proxy_bootstrap <- function(v, z, j, H = 48, escala = 0.25, nboot = 500, semilla = 99) {
+  set.seed(semilla)
+  s0 <- proxy_impacto(v$U, z, j, escala)
+  base <- irf_desde_impacto(v$B, v$N, v$p, H, s0); colnames(base) <- v$nombres
+  Uc <- v$U; Y0 <- v$Y[1:v$p, , drop = FALSE]
+  A <- v$B[-1, , drop = FALSE]; c0 <- v$B[1, ]
+  draws <- array(NA_real_, c(H + 1, v$N, nboot))
+  for (b in 1:nboot) {
+    w <- sample(c(-1, 1), v$TT, replace = TRUE)
+    Ub <- Uc * w; zb <- z * w
+    Ys <- matrix(0, v$TT + v$p, v$N); Ys[1:v$p, ] <- Y0
+    for (t in 1:v$TT) {
+      x <- as.vector(t(Ys[(t + v$p - 1):t, , drop = FALSE]))
+      Ys[t + v$p, ] <- c0 + x %*% A + Ub[t, ]
+    }
+    colnames(Ys) <- v$nombres
+    vb <- var_ols(Ys, v$p)
+    if (max(raices(vb)) >= 1.05) next
+    sb <- proxy_impacto(vb$U, zb, j, escala)
+    if (!all(is.finite(sb)) || max(abs(sb)) > 50 * escala) next   # instrumento casi nulo en la réplica
+    draws[, , b] <- irf_desde_impacto(vb$B, v$N, v$p, H, sb)
+  }
+  ok <- !is.na(draws[1, 1, ])
+  dr <- draws[, , ok, drop = FALSE]; dimnames(dr) <- list(NULL, v$nombres, NULL)
+  list(base = base, draws = dr, H = H, nboot_ok = sum(ok), impacto = setNames(s0, v$nombres))
+}
