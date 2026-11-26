@@ -23,7 +23,7 @@ local({
 source(ruta("R", "var_funciones.R"))
 suppressPackageStartupMessages({ library(ggplot2) })
 
-NBOOT <- as.numeric(Sys.getenv("NBOOT", 500)); H <- 48; P <- 6
+NBOOT <- as.numeric(Sys.getenv("NBOOT", 1000)); H <- 48; P <- 6
 base <- read.csv(ruta("data", "base_mensual.csv")); base$fecha <- as.Date(base$fecha)
 zm <- read.csv(ruta("data", "sorpresas_mensuales.csv")); zm$fecha <- as.Date(zm$fecha)
 CURVA <- c("y3m", "y2y", "y5y", "y10y", "y30y")
