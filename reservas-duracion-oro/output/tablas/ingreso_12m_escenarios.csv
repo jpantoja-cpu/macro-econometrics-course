@@ -1,0 +1,21 @@
+"escenario","estrategia","retorno_12m_pct","usd_por_100mm","vs_hoy_pb"
+"Mercado (futuros)","Como hoy: letras 1 mes",4.48,4475000,0
+"Mercado (futuros)","Letras 3M renovadas",4.62,4617000,14
+"Mercado (futuros)","Letras 6M renovadas",4.64,4641000,16
+"Mercado (futuros)","1 año (comprar y mantener)",4.55,4553000,7
+"Mercado (futuros)","2 años (vender a los 12 meses)",4.61,4609000,13
+"Pausa","Como hoy: letras 1 mes",4.03,4029000,0
+"Pausa","Letras 3M renovadas",4.17,4174000,14
+"Pausa","Letras 6M renovadas",4.2,4202000,17
+"Pausa","1 año (comprar y mantener)",4.55,4553000,52
+"Pausa","2 años (vender a los 12 meses)",5.16,5162000,113
+"Recortes (−100 pb)","Como hoy: letras 1 mes",3.47,3469000,0
+"Recortes (−100 pb)","Letras 3M renovadas",3.62,3616000,15
+"Recortes (−100 pb)","Letras 6M renovadas",3.65,3650000,18
+"Recortes (−100 pb)","1 año (comprar y mantener)",4.55,4553000,108
+"Recortes (−100 pb)","2 años (vender a los 12 meses)",6.18,6182000,271
+"Alzas (+150 pb)","Como hoy: letras 1 mes",4.87,4875000,0
+"Alzas (+150 pb)","Letras 3M renovadas",5.01,5014000,14
+"Alzas (+150 pb)","Letras 6M renovadas",5.03,5033000,16
+"Alzas (+150 pb)","1 año (comprar y mantener)",4.55,4553000,-32
+"Alzas (+150 pb)","2 años (vender a los 12 meses)",3.67,3668000,-120

@@ -1,0 +1,349 @@
+# Hallazgos, decisiones y tests fallidos
+
+Registro de cada decisión tomada en el proyecto, de los tests que fallan y de la lectura económica.
+Datos: Bloomberg, descargados el 2026-11-26 (`data/raw/bloomberg_tasas.csv`, 19 series, 1988-01 a 2026-11).
+Base mensual: 1988-01 a 2026-10 (466 meses).
+
+## 1. Datos y decisiones de construcción
+
+| Decisión | Motivo |
+|---|---|
+| Tasas y BCOM: promedio mensual de datos diarios | Consistente con IP e IPC, que son mensuales; reduce ruido diario. |
+| IP, IPC y BCOM en 100 × log | Las respuestas se leen como variaciones porcentuales. |
+| Tasas en niveles, en % | Un choque de 25 pb = 0.25; las IRF se reportan en pb. |
+| Se descarta el mes en curso (nov-2026) en las series diarias | Su promedio está incompleto. |
+| **Octubre 2025 interpolado en IPC y desempleo** | El BLS no publicó ese mes por el cierre del gobierno de EE.UU. Se usa el promedio de septiembre y noviembre (en log×100 para el IPC). Registro en `data/meses_interpolados.csv`. |
+| **USGG12M (1 año) no se usa como indicador de política** | Tiene un hueco de 2001-08 a 2008-06: el Tesoro suspendió las letras a 1 año. La variante de muestra completa usa el **2Y** (Hanson y Stein 2015) en lugar del 1Y de Gertler y Karadi (2015). |
+| 19 tickers validados con `bdp(..., "NAME")` | Todos OK; log en `data/raw/log_tickers.csv`. Los índices total return del Tesoro empiezan en 1992. |
+
+## 2. Inspección (antes de estimar)
+
+- Paneles por serie en `output/figuras/inspeccion_*.png` (nivel, diferencia, ACF/PACF, densidad, estacionalidad).
+- **Raíz unitaria** (`output/tablas/raiz_unitaria.csv`): las tasas a 2Y, 5Y, 10Y y 30Y y los logs de IP, IPC y BCOM son I(1) según ADF y KPSS. Fed funds y 3M dan resultado ambiguo: ADF rechaza al 5% por poco, pero KPSS también rechaza. Todas son I(0) en diferencias. Zivot-Andrews ubica los quiebres de las tasas en 2021-12/2022-02, al inicio del ciclo de alzas.
+- **Decisión: VAR en niveles.** Con raíces unitarias, las IRF del VAR en niveles siguen siendo consistentes (Sims, Stock y Watson 1990) y no hay que imponer relaciones de cointegración. La raíz máxima del sistema es 0.999, como se espera en niveles.
+- **Estacionalidad:** IP e IPC vienen desestacionalizados (SA) de Bloomberg; los boxplots por mes no muestran patrón en las tasas.
+- **Colinealidad fed funds–3M:** correlación de 0.99 en niveles, pero de 0.71 en primeras diferencias (1988-2007). El 3M aporta información propia, así que se mantiene; la variante "sin 3M" va en robustez.
+
+## 3. Especificaciones
+
+**A (principal): 1988-01 a 2007-12, política = fed funds efectiva.** Termina antes del límite inferior cero (ZLB), donde la fed funds deja de moverse.
+Orden Cholesky: [IP, IPC, BCOM, fed funds, 3M, 2Y, 5Y, 10Y, 30Y]. La macro no reacciona dentro del mes al choque de política; las tasas de mercado sí.
+
+**B: 1988-01 a 2026-10, política = 2Y.** Orden: [IP, IPC, BCOM, 2Y, 3M, 5Y, 10Y, 30Y].
+
+**Rezagos.** AIC, BIC y HQ eligen 1-2 rezagos en A y 2-3 en B. **Decisión: p = 6**, con un piso de 6 meses, porque con datos mensuales 1-2 rezagos no capturan la dinámica de la política (ver la nota sobre robustez más abajo: esta decisión pesa en el mediano plazo).
+
+## 4. Resultados
+
+### 4.1 Especificación A: choque de +25 pb en la fed funds (1988-2007)
+
+| Tramo | Impacto (pb) | Banda 68% | Precio al impacto (%) |
+|---|---|---|---|
+| 3M | 16.7 | [14.7, 18.9] | −0.04 |
+| 2Y | 14.3 | [11.0, 17.7] | −0.27 |
+| 5Y | 9.5 | [6.2, 12.9] | −0.42 |
+| 10Y | 5.8 | [2.8, 9.0] | −0.46 |
+| 30Y | 3.1 | [0.6, 6.2] | −0.48 |
+
+- **La transmisión cae con el plazo:** 2/3 del choque llega al 3M, cerca del 60% al 2Y, un cuarto al 10Y y un octavo al 30Y. **La curva se aplana:** 10Y−3M cae 11 pb y 30Y−2Y cae 11 pb al impacto.
+- **En precios el orden se invierte:** aunque el rendimiento largo se mueve menos, la duración (8.0 años en el 10Y, 15.5 en el 30Y) hace que el precio largo caiga más.
+- **FEVD:** el choque de política explica poco de la varianza de las tasas: 3-16% a 12 meses y ~10% a 48 meses. La mayor parte del movimiento de la curva no viene de sorpresas de la fed funds.
+
+### 4.2 Especificación B: choque de +25 pb en el 2Y (muestra completa)
+
+| Tramo | Impacto (pb) | 12 meses (pb) | Precio al impacto (%) |
+|---|---|---|---|
+| 3M | 12.5 | 43.6 | −0.03 |
+| 5Y | 24.4 | 27.3 | −1.08 |
+| 10Y | 19.5 | 19.4 | −1.55 |
+| 30Y | 14.0 | 13.2 | −2.13 |
+
+- Un choque al 2Y se transmite **mucho más al tramo largo** que un choque a la fed funds: 19.5 pb al 10Y contra 5.8 pb en A. Además el 3M sube con rezago (+44 pb a 12 meses), es decir, la Fed termina convalidando el movimiento.
+- **Lectura:** el choque de A se parece a un choque de "nivel actual" de la tasa (target). El de B se parece a uno de "trayectoria esperada" (path, en la terminología de Gürkaynak, Sack y Swanson 2005), y ese es el que mueve los precios de los bonos largos.
+- **Advertencia:** en B el choque explica 48-87% de la varianza de las tasas a 12 meses. No es un choque monetario puro: al ordenar el 2Y primero entre las tasas, el choque absorbe todo lo que mueve el 2Y dentro del mes, incluida la información macro. Por eso A es la especificación principal para un choque de la Fed propiamente dicho.
+
+### 4.3 Validación de precios con índices total return
+
+Proyecciones locales de los índices total return del Tesoro de Bloomberg sobre el choque B (+25 pb, impacto):
+
+| Índice | ΔP con índice TR | ΔP por duración (B) |
+|---|---|---|
+| 7-10 años | −1.40% | −1.55% (10Y) |
+| 20+ años | −2.24% | −2.13% (30Y) |
+
+Los dos métodos coinciden en magnitud, así que la traducción de rendimientos a precios por duración es razonable.
+
+### 4.4 ¿Alza y recorte tienen efectos simétricos?
+
+En el VAR lineal la simetría se impone por construcción. Las proyecciones locales con choques positivos y negativos separados muestran:
+
+- **Primeros ~20 meses:** alza y recorte dan respuestas espejo en todos los tramos y en todas las muestras. No se rechaza simetría.
+- **Especificación A (1988-2007):** se rechaza simetría en 2-5 de 37 horizontes, que es lo esperable por azar al 10%. **No hay evidencia de asimetría.**
+- **Especificación B, a partir de ~2 años:** las respuestas divergen. Tras un alza las tasas siguen altas; tras un recorte, las tasas largas terminan *por encima* de su nivel previo (el recorte se revierte). Se rechaza simetría en 11-18 horizontes con la muestra completa, y la divergencia persiste en el 10Y y el 30Y aun excluyendo 2020-2022 (11-12 horizontes, `lp_asimetria_B_hasta2019.png`).
+- **Lectura prudente:** más que una asimetría en la transmisión, esto refleja que los recortes ocurren en recesiones y les sigue una recuperación con alzas. Las proyecciones locales solo controlan por rezagos y no capturan el estado del ciclo. Además, a horizontes largos hay pocos episodios independientes y las pruebas se repiten sobre 37 horizontes superpuestos.
+
+## 5. Robustez (especificación A)
+
+Archivo `output/figuras/robustez_irf.png`.
+
+- **Impacto: robusto.** En todas las variantes (BVAR, 3 o 9 rezagos, política primero, sin 3M, muestra completa) el impacto queda en 16-21 pb para el 3M, 12-17 para el 2Y, 7-12 para el 5Y, 4-7.5 para el 10Y y 1.7-4.7 para el 30Y.
+- **Mediano plazo: no robusto.** Con 6 y 9 rezagos aparece una oscilación en el tramo largo: cae 10-12 pb hacia el mes 5 y sube +8-12 pb hacia el mes 15. **No aparece en el BVAR** (λ = 0.08, elegido por verosimilitud marginal) **ni en el VAR(3)**, que dan un descenso suave hacia cero. Como los criterios de información prefieren pocos rezagos y el BVAR es el estimador más disciplinado con 9 variables y 234 observaciones, la oscilación debe leerse como sobreajuste, no como un hallazgo.
+- **Muestra completa con fed funds:** respuestas más persistentes y planas en el largo plazo. Es la contaminación esperada del ZLB (2009-2015, 2020-2022), donde la fed funds no se mueve y el VAR atribuye mal la dinámica; confirma por qué no es la especificación principal.
+
+## 6. Tests que fallan (documentados, no escondidos)
+
+| Test | Resultado | Lectura |
+|---|---|---|
+| Portmanteau (h=24) y LM (h=12) | Se rechaza no-autocorrelación en A y B (p < 0.001) | Queda dinámica sin capturar con p=6; es otra razón para no sobreinterpretar el mediano plazo. Subir p empeora el sobreajuste. |
+| Jarque-Bera | En A se rechaza normalidad en IP, IPC, BCOM, fed funds y 5Y; en B, en todas las ecuaciones | Colas pesadas por 2008 y 2020. Las bandas son bootstrap de residuos, así que no dependen de la normalidad. |
+| ARCH (12 rezagos) | Se rechaza en la ecuación del IPC (A y B) e IP/2Y (B) | Volatilidad cambiante. No afecta la consistencia de las IRF puntuales. |
+| Sesgo del bootstrap | En algunos horizontes medios la IRF puntual queda fuera de la banda 68% (p. ej., 10Y a 24 meses en A: 5.4 vs [−2.6, 5.1]) | Sesgo de muestra pequeña en VAR casi integrados: las réplicas son menos persistentes que la estimación. Mejora pendiente: bootstrap con corrección de sesgo de Kilian (1998). |
+
+## 7. Ejercicio con la EFFR y sorpresas de mercado (futuros de fed funds)
+
+**Por qué.** La identificación por orden (Cholesky) supone qué variable reacciona primero. Con los futuros de fed funds se mide directamente la parte *inesperada* de cada decisión el día del anuncio, y con eso se gana muestra: 269 anuncios del FOMC entre 1994 y 2026, frente a 234 meses en la especificación A.
+
+### 7.1 Datos y construcción
+
+- **Futuros:** genéricos FF1 a FF6 de Bloomberg, diarios, 1988-12 a 2026-11, todos validados (`data/raw/log_tickers_futuros.csv`). FF1 implica 3,88%, igual a la EFFR del día.
+- **Calendario FOMC** (`data/fomc_fechas.csv`): 272 anuncios de 1994 a 2026, 262 programados y 10 entre reuniones.
+  - **Verificación:** los 92 cambios de la meta de la fed funds desde 1994 en Bloomberg (`FDTR`) caen todos en una fecha del calendario. Las fechas de 2021-2024 coinciden con una lista pública.
+  - **Pendiente:** cruzar las reuniones *sin* cambio de tasa anteriores a 2021 con las páginas de la Fed.
+  - **Excluidos de la base:** 2001-09-17 (reapertura tras el 11-S), 2007-08-17 (solo tasa de descuento) y 2020-03-16 (anuncio de domingo en plena crisis COVID).
+- **Sorpresa target** (Kuttner 2001): Δ tasa implícita de FF1 × D/(D−d). En los últimos 7 días del mes se usa FF2. Si el anuncio cae el primer día hábil del mes, la víspera se toma de FF2.
+- **Sorpresa path:** Δ tasa implícita de FF4 (contrato a 3 meses), menos la parte explicada por la sorpresa target.
+- **Ventana:** diaria, de cierre a cierre. Incluye otras noticias del día; no hay historia intradía larga en Bloomberg.
+- **Validación con la EFFR:** una sorpresa target de 25 pb mueve la EFFR 33 pb entre la víspera y el día siguiente (IC 90%: 22-44). La sorpresa mide lo que efectivamente pasa con la tasa de mercado.
+
+### 7.2 Estudio de eventos (día del anuncio)
+
+Efecto de una sorpresa de 25 pb, en pb (`output/tablas/eventos_coeficientes.csv`):
+
+| Tramo | Target 1994-2007 | Path 1994-2007 | Target 2008-2026 | Path 2008-2026 |
+|---|---|---|---|---|
+| 3M | 17,4 | 10,3 | 18,1 | 3,1 |
+| 2Y | 7,9 | 31,9 | 11,3 | 41,8 |
+| 5Y | 2,0 | 31,9 | 9,6 | 37,6 |
+| 10Y | −0,8 | 24,3 | 6,6 | 26,9 |
+| 30Y | −2,2 | 16,2 | 3,4 | 11,9 |
+
+- **La tasa de hoy mueve el tramo corto; la trayectoria mueve el mediano y el largo.** Antes de 2008, una sorpresa en la tasa actual no movía el 10Y ni el 30Y. Una sorpresa sobre la trayectoria esperada movía el 10Y 24 pb. Es el mismo resultado de Gürkaynak, Sack y Swanson (2005), replicado con estos datos.
+- **Esperado vs. inesperado** (Kuttner 2001, 1994-2008): la parte esperada de un cambio de meta casi no mueve la curva (3,5 pb en el 3M). La parte inesperada mueve el 3M 16,6 pb (t = 10), el 2Y 10 pb, el 5Y 6 pb y el 10Y 3 pb (no significativo). Los mercados ya descuentan lo anunciado.
+- **Persistencia en 20 días hábiles:** el efecto target sobre 3M-2Y se mantiene o crece. El efecto path sobre el 10Y y el 30Y se revierte parcialmente: en el 10Y pasa de 24 a 7 pb y en el 30Y llega a 0 en 20 días.
+- **Asimetría (1994-2007):** las sorpresas restrictivas se transmiten al 2Y y al 5Y; las expansivas casi no.
+  - Una sorpresa alcista de 25 pb sube el 2Y 23 pb; una bajista lo baja solo 3 pb (p = 0,001). En el 5Y: 18,5 vs. ≈0 (p = 0,006).
+  - Se mantiene usando solo reuniones programadas y sin sorpresas mayores a 20 pb.
+  - En el 3M y en la EFFR no hay asimetría.
+  - Cautela: son 35 sorpresas positivas y 41 negativas.
+
+### 7.3 VAR con instrumento externo (EFFR como política)
+
+Las sorpresas se agregan por mes con la ponderación de Gertler y Karadi (2015): una sorpresa el día d de un mes de D días pesa (D−d+1)/D en ese mes y (d−1)/D en el siguiente, porque las tasas del VAR son promedios mensuales. **Sin esa ponderación el instrumento es débil** (F ≈ 2); con ella, F = 49.
+
+| Especificación | F 1ª etapa | 3M | 2Y | 5Y | 10Y | 30Y |
+|---|---|---|---|---|---|---|
+| P1: EFFR, 1988-2008, target | 49,2 | 14,6 | 12,8 | 2,9 | −2,7 | −4,6 |
+| P2: EFFR, 1988-2026, target | 16,1 | 22,1 | 15,3 | 5,7 | 0,1 | −2,1 |
+| P3: 6M, 1988-2026, FF4 | 11,5 | 19,5 | 18,8 | 11,8 | 4,9 | 0,2 |
+| Cholesky A (sección 4.1) | — | 16,7 | 14,3 | 9,5 | 5,8 | 3,1 |
+
+Respuesta al impacto en pb ante +25 pb en la variable de política.
+
+- **Con la EFFR y toda la muestra (P2) el instrumento es fuerte** (F = 16), así que sí se puede usar la EFFR con más datos si el choque se identifica con los futuros.
+- **Con identificación de mercado, un alza de la EFFR no sube las tasas largas al impacto.** El 10Y no se mueve y el 30Y cae 2-5 pb. Cholesky daba +6 pb en el 10Y: atribuía a la Fed movimientos del tramo largo que vienen de otras noticias del mismo mes.
+- **El aplanamiento es mucho más fuerte que con Cholesky:** 3M +22 pb y 30Y −2 pb.
+- Coincide con el estudio de eventos: el tramo largo responde a la trayectoria esperada, no a la tasa de hoy. Que el 30Y caiga es consistente con un canal de credibilidad: si la Fed sube más de lo esperado, el mercado espera menos inflación futura.
+- **Dinámica:** a 12 meses la EFFR sigue subiendo (+42 pb en P2) y el 10Y sube con rezago (+4 a +15 pb, con bandas amplias).
+
+## 8. ¿Qué mueve la curva? Factores de Nelson-Siegel y macro (script 12)
+
+**Enfoque** (Diebold y Li 2006; Diebold, Rudebusch y Aruoba 2006). La curva de cada mes se resume en tres factores de Nelson-Siegel (λ = 0,0609, plazos en meses):
+
+- **Nivel:** desplazamiento paralelo de toda la curva.
+- **Pendiente:** largo − corto (en este proyecto se reporta como −S, para que sea positiva cuando la curva sube con el plazo).
+- **Curvatura:** el tramo medio respecto de los extremos.
+
+Esos factores entran a un VAR mensual con [desempleo, inflación (IPC, % a/a), EFFR, VIX, nivel, pendiente, curvatura], identificado por Cholesky en ese orden. La macro es lenta; la Fed responde a la macro; el VIX responde a la macro y a la Fed; la curva responde a todo dentro del mes.
+
+### 8.1 Ajuste
+
+- **Plazos:** 3M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y y 30Y. Se usan los disponibles en cada mes: el 1Y tiene un hueco 2001-2008, el 7Y otro 1993-2009 y el 20Y solo existe desde 2020.
+- **Error de ajuste (RMSE):** 4-12 pb por plazo (`ns_ajuste_por_plazo.csv`). El 20Y ajusta peor (15 pb, por encima de la curva), lo que coincide con la conocida "anomalía" del bono a 20 años, que cotiza barato.
+- **Los factores coinciden con sus medidas empíricas:** correlación de 0,98 entre el nivel y el 10Y, 0,995 entre la pendiente y 10Y−3M, y 0,97 entre la curvatura y 2·2Y−3M−10Y.
+- **VAR:** criterios de información → p = 2. Raíz máxima 0,98-0,99. Muestras: A = 1990-2007, B = 1990-2026 (el VIX empieza en 1990).
+
+### 8.2 Respuestas (`mc_irf_factores_*.png`, `mc_desplazamiento_curva_*.png`)
+
+Cambio del rendimiento en pb, reconstruido con los factores (muestra completa, 12 meses después del choque):
+
+| Choque | 3M | 2Y | 10Y | 30Y | Lectura |
+|---|---|---|---|---|---|
+| Política: +25 pb EFFR | +23,5 | +19,7 | +6,6 | +2,3 | Aplanamiento: sube el corto, el largo casi no |
+| Inflación: +0,32 pp (1 d.e.) | +10,1 | +9,8 | +5,2 | +3,5 | Aplanamiento "bajista": la Fed reacciona subiendo el corto |
+| Desempleo: +0,12 pp (1 d.e.) | −3,6 | −4,9 | +0,1 | +2,2 | Empinamiento: el mercado espera recortes |
+| Riesgo: VIX +2,7 puntos (1 d.e.) | −11,5 | −11,0 | −4,7 | −2,3 | Empinamiento "alcista": fuga hacia la calidad y recortes esperados |
+
+- **La política monetaria mueve la pendiente y la curvatura, no el nivel.** Con el instrumento de mercado (F = 15,9) el efecto es más fuerte: la pendiente cae 31 pb al impacto y el nivel *baja* 5 pb. Es la misma conclusión que en la sección 7.
+- **La inflación cambió de papel.** En 1990-2007 un choque de inflación casi no movía la curva (efectos de 1-2 pb, sin significancia a 12 meses). En la muestra completa, por el episodio 2021-2023, sube el tramo corto 10 pb a los 12 meses y aplana la curva.
+- **El VIX explica una parte relevante de la pendiente:** 16-17% de su varianza en 1990-2007 y 4-9% en la muestra completa. Un alza del riesgo baja sobre todo el tramo corto.
+
+### 8.3 Descomposición de varianza (`mc_fevd.png`, `mc_fevd_resumen.csv`)
+
+| Factor (48 meses, 1990-2026) | Desempleo | Inflación | Política | VIX | Choques propios de la curva |
+|---|---|---|---|---|---|
+| Nivel | 1,3 | 4,0 | 0,4 | 1,4 | 92,8 |
+| Pendiente | 10,0 | 10,3 | 16,1 | 9,4 | 54,0 |
+| Curvatura | 13,7 | 5,9 | 6,5 | 11,0 | 62,9 |
+
+- **La pendiente es el factor "macro":** casi la mitad de su varianza viene de la Fed, la inflación, el desempleo y el riesgo.
+- **El nivel casi no lo explica la macro de corto plazo** (más del 90% son choques propios), ni siquiera agregando el VIX. El nivel refleja expectativas de inflación de largo plazo y la prima por plazo, que este VAR no observa. Es la motivación de la parte 3 (descomposición ACM).
+
+### 8.4 Descomposición histórica (`mc_descomposicion_historica.png`, `mc_reparto_episodios.csv`)
+
+- **2021-12 a 2023-10:**
+  - La pendiente cayó 289 pb (la curva se invirtió). De eso, 212 pb se atribuyen a choques de inflación y 109 pb a la política monetaria.
+  - El nivel subió 299 pb, casi todo (335 pb) por choques propios de la curva, no por la macro. Es coherente con un alza de la prima por plazo y de las expectativas de largo plazo.
+- **2023-10 a 2026-10:** la pendiente se recuperó 221 pb, sobre todo (184 pb) porque se desvanecieron los choques de inflación.
+
+### 8.5 Limitaciones
+
+- La identificación de inflación, desempleo y VIX es por orden (Cholesky). Solo el choque de política tiene una versión con instrumento de mercado.
+- En la muestra completa la EFFR está en el ZLB en 2009-2015 y 2020-2022. Se mitiga con el instrumento (F = 15,9).
+- La inflación entra como IPC general interanual. La subyacente (IPC y PCE) ya está descargada para una prueba de robustez.
+
+## 9. ¿Expectativas de tasas o prima por plazo? (script 15)
+
+**Enfoque.** El rendimiento a n años se separa en la expectativa de la tasa corta promedio de los próximos n años (componente neutral al riesgo) y la prima por plazo, es decir, lo que se cobra por el riesgo de mantener el bono largo. La prima es la de Adrian, Crump y Moench (2013), que publica la Fed de Nueva York (`ACMTP02/05/10 Index`, diaria desde 1988).
+
+- **Construcción de la expectativa:** Bloomberg no tiene los rendimientos neutrales al riesgo de ACM (los tickers `ACMRNY*` y `ACMY*` fallaron). Se construye como **rendimiento de mercado (USGG) − prima ACM**. Difiere del componente publicado por la Fed solo por el error de ajuste del modelo y por usar rendimientos par en vez de cupón cero: unos pocos pb.
+- **Niveles de la prima a 10 años:** 181 pb en promedio en 1990-2007, 75 pb en 2008-2019 y −20 pb en 2020-2026. El último mes está en 79 pb: volvió a niveles previos a la pandemia.
+
+### 9.1 Episodios (`acm_descomposicion_10y.png`, `acm_episodios.csv`)
+
+| Episodio | EFFR (pb) | 10Y (pb) | Expectativa (pb) | Prima (pb) |
+|---|---|---|---|---|
+| Conundrum (2004-06 a 2006-06) | +397 | +38 | +210 | **−172** |
+| Taper tantrum (2013-04 a 2013-09) | −6 | +107 | −12 | **+119** |
+| Alzas (2021-12 a 2023-10) | +525 | +334 | +225 | +109 |
+| Recortes (2023-10 a 2026-10) | −145 | +33 | −14 | **+47** |
+
+- **El "conundrum" de Greenspan fue una caída de la prima.** Las expectativas sí subieron con la Fed, pero la prima cayó casi lo mismo, y el 10Y quedó casi igual.
+- **El taper tantrum fue casi todo prima,** sin cambio de tasas.
+- **2022-23:** dos tercios del alza del 10Y fueron expectativas y un tercio prima.
+- **Desde 2023-10** la Fed recortó 145 pb y aun así el 10Y subió 33 pb, porque la prima subió 47 pb. Ese es el factor "nivel" que la macro de corto plazo no explicaba en la sección 8.
+
+### 9.2 Días FOMC (`acm_eventos_fomc.png`, `acm_eventos_fomc.csv`)
+
+Efecto de una sorpresa de 25 pb sobre cada componente del 10Y, en pb:
+
+| | Target 1994-2007 | Target 2008-2026 | Path 1994-2007 | Path 2008-2026 |
+|---|---|---|---|---|
+| Expectativa 10Y | +4,7 | +12,0 | +24,6 | +39,8 |
+| Prima 10Y | **−5,5** | **−5,4** | −0,3 | −12,9 |
+
+- **Una sorpresa restrictiva sube las expectativas y *baja* la prima.** El efecto es significativo en todos los plazos y en ambas submuestras (t ≈ 3-5).
+- **Esto explica por qué el 30Y cae ante un alza de la EFFR** (secciones 7 y 8): el mercado lee una Fed más dura como menos riesgo de inflación futura y exige menos compensación por plazo.
+- **Las sorpresas de trayectoria (path) mueven casi solo las expectativas.**
+
+### 9.3 VAR mensual (`acm_var_irf.png`, `acm_politica_proxy.png`, `acm_var_fevd.csv`)
+
+**Especificación:** [desempleo, inflación, EFFR, VIX, MOVE, expectativa 10Y, prima 10Y], 1990-02 a 2026-10, p = 2, Cholesky.
+
+- **Política (+25 pb en la EFFR):** la expectativa 10Y sube 12,7 pb y la prima baja 8,4 pb al impacto. Con el instrumento de mercado (F = 25) da prácticamente lo mismo: +11,8 y −9,2 pb. La prima vuelve a cero en unos 2 años.
+- **MOVE (volatilidad de bonos, +11,5 puntos):** la prima sube 6-9 pb y se mantiene; no mueve las expectativas. **El MOVE explica 14-24% de la varianza de la prima.**
+- **VIX (+3,9 puntos):** baja las expectativas 4-9 pb (se esperan recortes y hay fuga hacia la calidad) y apenas mueve la prima.
+- **Inflación (+0,34 pp):** sube las expectativas unos 5 pb a 12-24 meses; no mueve la prima en el corto plazo.
+- **Descomposición de varianza a 48 meses:**
+  - **Expectativas:** la política explica 17% y el VIX 13%.
+  - **Prima:** el MOVE explica 24% y la política 6%; el resto (~50%) son choques propios.
+
+### 9.4 ¿Qué movió el 10Y en 2022-23 y después? (`acm_descomposicion_historica.png`, `acm_reparto_episodios.csv`)
+
+- **2021-12 a 2023-10:**
+  - La expectativa subió 225 pb: política +118 y inflación +66.
+  - La prima subió 109 pb: choques propios +170 y volatilidad de bonos (MOVE) +76, compensados en parte por la política (−82) y la inflación (−40).
+- **2023-10 a 2026-10:** la prima subió 47 pb, en buena parte por inflación (+64). La inflación persistente ya no se lee como transitoria y el mercado empieza a cobrar más por el riesgo de plazo.
+
+### 9.5 Limitaciones
+
+- La expectativa es un residuo (rendimiento − prima), así que hereda cualquier error del modelo ACM.
+- Otras medidas de prima (Kim-Wright, por ejemplo) dan niveles distintos, aunque la dinámica es parecida. Vale la pena contrastar.
+- El VAR identifica por orden (Cholesky). Solo el choque de política tiene una versión con instrumento, y coincide con Cholesky.
+
+## 10. Noticias macro vs. la Fed: estudio de eventos diario (script 17)
+
+**Enfoque** (Gürkaynak, Sack y Swanson 2005; Balduzzi, Elton y Green 2001).
+
+- **Sorpresa de un dato:** primera publicación − mediana de la encuesta de Bloomberg, estandarizada (1 desviación estándar). El signo es positivo cuando la economía sale más fuerte o hay más inflación; por eso se invierte en desempleo y solicitudes de subsidio.
+- **Regresión:** sobre todos los días hábiles de 1998-06 a 2026-11: Δ rendimiento diario (pb) contra las sorpresas de 9 indicadores y contra las sorpresas target y path del FOMC, también estandarizadas.
+- **Excluido:** marzo-diciembre de 2020, porque las sorpresas de la pandemia son órdenes de magnitud mayores.
+- **Datos:** Bloomberg (`ECO_RELEASE_DT`, `ACTUAL_RELEASE`, `BN_SURVEY_MEDIAN`), disponibles desde 1997-98. Para salarios hay datos desde 2010 y para ventas desde 2001.
+
+### 10.1 ¿Qué noticia mueve más la curva? (`noticias_efecto_por_indicador.png`, `noticias_resumen_completa.csv`)
+
+Efecto de una sorpresa de 1 d.e., en pb (1998-2026). `***` p<0,01, `**` p<0,05, `*` p<0,10.
+
+| Noticia | 2Y | 10Y | Forward nominal 5y5y | Prima 10Y (ACM) |
+|---|---|---|---|---|
+| FOMC: sorpresa path | 4,5*** | 2,8*** | 1,5** | −1,2*** |
+| Nóminas | 3,8*** | 3,1*** | 2,3*** | 0,4 |
+| Salarios (desde 2010) | 2,9*** | 3,2*** | 2,7*** | 1,4*** |
+| ISM manufacturero | 2,3*** | 2,4*** | 2,3*** | 1,0*** |
+| FOMC: sorpresa target | 2,3*** | 0,6 | −0,1 | −1,5** |
+| IPC subyacente | 1,7*** | 1,1** | 0,6 | 0,0 |
+| Ventas minoristas | 1,1** | 1,1* | 0,9 | 0,6 |
+| Desempleo | 1,2*** | 0,5 | 0,2 | −0,2 |
+| Solicitudes de subsidio | 0,8*** | 0,9*** | 0,8*** | 0,4** |
+| IPC general | 0,6 | 0,7 | 0,5 | 0,1 |
+| PIB (avance) | 0,3 | 0,2 | 0,1 | 0,6 |
+
+- **En el 2Y, lo que más pesa es la Fed** (sorpresas sobre la trayectoria), seguida de las nóminas.
+- **En el 10Y pesan tanto los datos de empleo y actividad** (nóminas, salarios, ISM) **como la Fed.**
+- **La diferencia está en la prima por plazo:**
+  - Las noticias macro fuertes (ISM, salarios, solicitudes de subsidio) *suben* la prima.
+  - Las sorpresas restrictivas de la Fed la *bajan* (como en la sección 9).
+  - Es decir, una economía fuerte sube la compensación por plazo y una Fed dura la reduce.
+- **El forward nominal 5y5y responde de forma significativa a nóminas, salarios e ISM.** Es la "sensibilidad excesiva" de las tasas largas que documentó GSS (2005).
+- **Desempleo y PIB casi no mueven la curva.** Las nóminas contienen la información del informe de empleo, y el PIB de avance llega con datos ya conocidos.
+
+### 10.2 ¿Cambió la sensibilidad? (`noticias_por_periodo.png`)
+
+- **El IPC pasó a ser protagonista en 2021-2026.** Una sorpresa de 1 d.e. en el IPC general sube el 2Y 4,1 pb y el 10Y 3,0 pb; en 2008-2019 el efecto era nulo.
+  - Como el IPC general y el subyacente salen el mismo día, el efecto conjunto del día del IPC en 2021-2026 es de unos 4,7 pb en el 2Y y 3,1 pb en el 10Y.
+  - En 2021-2026 domina el componente general (energía y alimentos); en 1998-2007 era el subyacente.
+- **El empleo perdió peso relativo:** el efecto de las nóminas en el 2Y pasó de 5,6 pb (1998-2007) a 4,1 (2008-2019) y a 2,8 (2021-2026). El mercado pasó a mirar la inflación más que el empleo.
+- **Las sorpresas de la Fed pesan más que nunca:** una sorpresa path de 1 d.e. sube el 2Y 7,3 pb en 2021-2026, contra 3,6-4,0 antes.
+
+### 10.3 ¿Expectativas de inflación ancladas?
+
+- **En 2021-2026 las sorpresas del IPC no movieron la compensación por inflación de largo plazo:** el swap de inflación 5y5y responde 0,2-0,3 pb y el breakeven 10Y 0,7 pb, ninguno significativo. El forward *nominal* 5y5y sí sube (+2,0 pb con el IPC general), así que el ajuste fue por tasas reales y prima, no por expectativas de inflación.
+- **Una Fed restrictiva baja la inflación esperada de largo plazo:** una sorpresa path de 1 d.e. baja el swap 5y5y 2,4 pb y el breakeven 10Y 1,4 pb (2021-2026). Es una señal de credibilidad.
+
+### 10.4 ¿Qué días se mueve más el 10Y? (`noticias_volatilidad_por_dia.png`)
+
+Desviación estándar del cambio diario del 10Y relativa a los días sin datos relevantes:
+
+| Período | FOMC | IPC | Nóminas | Otros datos | Sin dato |
+|---|---|---|---|---|---|
+| 1998-2007 | 1,32 | 1,24 | **1,55** | 1,25 | 1,00 |
+| 2008-2019 | **1,64** | 1,04 | 1,28 | 1,14 | 1,00 |
+| 2021-2026 | 1,43 | **1,50** | 1,46 | 1,13 | 1,00 |
+
+En cada período el día más volátil es distinto: antes de 2008 el informe de empleo, en 2008-2019 el FOMC (la era de la guía futura) y en 2021-2026 el IPC. En el 2Y el cambio es más marcado: los días de IPC pasaron de 3,5 pb de desviación estándar en 2008-2019 a 10,6 pb en 2021-2026.
+
+### 10.5 Limitaciones
+
+- La ventana es diaria: otras noticias del día contaminan la estimación, y el ISM (10:00) puede coincidir con otros datos.
+- El IPC general y el subyacente salen juntos, así que sus coeficientes por separado son imprecisos. Conviene leer el efecto conjunto del día.
+- La mediana de la encuesta está redondeada: muchas sorpresas de IPC valen 0 (38-40%).
+- 2021-2026 tiene solo 48-57 publicaciones de IPC.
+
+## 11. Pendientes / siguientes pasos
+
+1. ~~Instrumento externo con futuros de fed funds~~ (hecho, sección 7). Pendiente: cruzar con la web de la Fed las reuniones sin cambio de tasa anteriores a 2021, y probar ventanas intradía si se consiguen datos.
+2. Bootstrap con corrección de sesgo (Kilian 1998).
+3. Proyecciones locales dependientes del estado (recesión/expansión) para separar asimetría de ciclo.
+4. Shadow rate de Wu-Xia para usar la fed funds en la muestra completa.
+5. ~~Parte 2: sorpresas macro vs. FOMC~~ (hecho, sección 10). Pendiente: ventana intradía y otros datos (PCE, JOLTS).
+6. ~~Parte 3: expectativas vs. prima por plazo~~ (hecho, sección 9). Pendiente: contrastar con Kim-Wright.
+7. Robustez de la sección 8 con inflación subyacente y con el MOVE en lugar del VIX.

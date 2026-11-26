@@ -1,0 +1,5 @@
+"variable","periodo","cambio_observado_pb","Macro: inflación","Macro: desempleo","Política (EFFR)","Riesgo (VIX)","Factores de la curva (choques propios)","base_pb"
+"nivel","2021-12 a 2023-10",299,-7,7,-27,-9,335,0
+"pendiente","2021-12 a 2023-10",-289,-212,-36,-109,15,53,0
+"nivel","2023-10 a 2026-10",53,45,-15,2,-10,31,0
+"pendiente","2023-10 a 2026-10",221,184,-10,21,29,-3,0

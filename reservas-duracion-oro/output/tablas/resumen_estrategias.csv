@@ -1,0 +1,7 @@
+"estrategia","duracion_aprox","retorno_anual_pct","volatilidad_anual_pct","peor_12m_pct","p5_12m_pct","pct_ventanas_12m_negativas","max_caida_pct","meses"
+"Caja (EFFR)",0,3.3,0.77,0.07,0.07,0,0,465
+"Letras 3M",0.24,3.01,0.7,-0.03,0.03,1.8,-0.05,465
+"Letras 6M",0.48,3.15,0.77,-0.53,0.05,3.1,-0.54,465
+"1 año",0.97,3.28,1.02,-2.24,0,5.1,-2.3,465
+"2 años",1.93,3.59,1.91,-5.56,-0.52,12.3,-5.78,465
+"3 años",2.89,3.73,2.85,-8.45,-1.91,20.9,-9.29,453

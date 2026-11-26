@@ -1,0 +1,51 @@
+# 13_descarga_vix.R ---------------------------------------------
+# SE CORRE EN LA PC DE LA OFICINA (Terminal Bloomberg abierta y con sesión).
+# Volatilidad / aversión al riesgo para el modelo de factores de la curva:
+# VIX (acciones, S&P 500) y MOVE (volatilidad implícita de bonos del Tesoro).
+#
+# Cómo correrlo: abre este archivo en RStudio y presiona "Source". Al final copia
+# los comandos de Git que imprime.
+# Salida: data/raw/bloomberg_vix.csv, data/raw/log_tickers_vix.csv
+
+local({
+  # Busca el utils.R de ESTA carpeta (var-tasas-fed), sin importar dónde esté parado RStudio
+  cand <- c(if (file.exists("var-tasas-fed.Rproj")) "R/utils.R", "var-tasas-fed/R/utils.R", "../var-tasas-fed/R/utils.R",
+            "C:/Users/jpantoja/Documents/macro-econometrics-course/var-tasas-fed/R/utils.R")
+  source(cand[file.exists(cand)][1])
+})
+if (!requireNamespace("Rblpapi", quietly = TRUE)) install.packages("Rblpapi")
+library(Rblpapi)
+
+tickers <- data.frame(ticker = c("VIX Index", "MOVE Index"), var = c("vix", "move"),
+                      frecuencia = c("DAILY", "DAILY"), stringsAsFactors = FALSE)
+
+con <- blpConnect()
+val <- do.call(rbind, lapply(tickers$ticker, function(t)
+  tryCatch(bdp(t, "NAME"), error = function(e) data.frame(NAME = NA_character_, row.names = t))))
+tickers$nombre <- val[tickers$ticker, "NAME"]
+tickers$estado <- ifelse(is.na(tickers$nombre) | tickers$nombre == "", "FALLA", "OK")
+print(tickers, row.names = FALSE)
+write.csv(tickers, ruta("data", "raw", "log_tickers_vix.csv"), row.names = FALSE)
+
+datos <- do.call(rbind, lapply(seq_len(nrow(tickers)), function(i) {
+  t <- tickers[i, ]; if (t$estado != "OK") return(NULL)
+  message("  bdh: ", t$ticker)
+  opt <- c("periodicitySelection" = t$frecuencia, "nonTradingDayFillOption" = "ACTIVE_DAYS_ONLY")
+  d <- tryCatch(bdh(t$ticker, "PX_LAST", start.date = as.Date("1988-01-01"), end.date = Sys.Date(), options = opt),
+                error = function(e) { message("    error: ", conditionMessage(e)); NULL })
+  if (is.null(d) || !nrow(d)) return(NULL)
+  data.frame(fecha = as.Date(d$date), ticker = t$ticker, var = t$var, nombre = t$nombre, frecuencia = t$frecuencia,
+             valor = as.numeric(d$PX_LAST), fecha_descarga = as.character(Sys.Date()))
+}))
+datos <- datos[!is.na(datos$valor), ]
+archivo <- ruta("data", "raw", "bloomberg_vix.csv")
+write.csv(datos, archivo, row.names = FALSE)
+print(do.call(rbind, lapply(split(datos, datos$var), function(d)
+  data.frame(var = d$var[1], n = nrow(d), desde = min(d$fecha), hasta = max(d$fecha), ultimo = tail(d$valor, 1)))),
+  row.names = FALSE)
+blpDisconnect(con)
+
+# Mensaje final (se omite cuando corre dentro de actualizar_datos.R)
+if (!isTRUE(getOption("vtf_lote")))
+  cat("\nListo. Datos guardados en data/raw/.\n",
+      "Para subirlos a GitHub: doble clic en subir_datos.bat (carpeta var-tasas-fed).\n\n", sep = "")

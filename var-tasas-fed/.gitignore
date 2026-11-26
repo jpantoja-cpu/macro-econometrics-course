@@ -1,0 +1,5 @@
+# Los resultados de este proyecto sí se versionan (el .gitignore raíz excluye output/)
+!output/
+output/*.rds
+# Carpeta de sesión que crea RStudio al abrir el .Rproj
+.Rproj.user/
