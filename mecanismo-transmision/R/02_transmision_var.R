@@ -325,5 +325,5 @@ g <- ggplot(el, aes(h, valor, colour = escenario, linetype = escenario)) + geom_
        x = sprintf("Meses desde %s", format(meses[1] - 1, "%b-%Y")), y = NULL, colour = NULL, linetype = NULL) +
   tema_limpio(9) + guides(colour = guide_legend(ncol = 2))
 guardar_fig(g, "escenarios_condicionales", ancho = 12, alto = 6.5)
-saveRDS(list(v = v, s_pol = s_pol, a_tec = a_tec, VARS = VARS, ESC = ESC, TRAY = TRAY_EFFR, base_f = base_f, d = d, f_dat = f_dat),
+saveRDS(list(v = v, s_pol = s_pol, a_tec = a_tec, VARS = VARS, ESC = ESC, TRAY = TRAY_EFFR, base_f = base_f, d = d, f_dat = f_dat, Z = Z, base = base),
         ruta("output", "modelo_transmision.rds"))

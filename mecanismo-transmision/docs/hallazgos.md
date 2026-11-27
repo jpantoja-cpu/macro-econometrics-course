@@ -90,7 +90,50 @@ Retorno a 12 meses, en pb, como desvío frente al escenario de mercado. 1 pb = 1
 - Las respuestas reales tienen bandas amplias.
 - La trayectoria de mercado se supone plana después de abril de 2027.
 
+## 5. ¿Pega más una alza cuando los mercados ya están tensos? (script 04)
+
+**Enfoque.** Proyecciones locales con dependencia del estado (Ramey y Zubairy 2018; Tenreyro y Thwaites 2016):
+- **Choque:** la serie del choque de política del VAR (sección 1), el mismo en ambos estados: sube la EFFR 25 pb al impacto en promedio.
+- **Estado:** se mide el mes anterior al choque.
+- **Muestra:** 1994-2026, sin las ventanas que tocan la pandemia.
+
+**Por qué no la versión con instrumento por estado.** Se probó y se descartó: al partir la muestra, la sorpresa de la Fed pierde fuerza como instrumento (F = 1,2 en los meses de tecnología firme).
+
+Dos definiciones de estado tenso:
+- **Condiciones financieras:** índice de Bloomberg menor que 0, es decir, más restrictivas que lo normal (159 meses de 393).
+- **Tecnología débil:** el S&P 500 tecnología cayó en los 6 meses previos (102 meses de 387).
+
+**Resultado: no hay evidencia de que la alza golpee más a la economía real en mercados tensos.** Si algo, es al revés: en estado tenso el empleo y la producción salen mejor después del choque. Es coherente con el "efecto información": cuando la Fed sube en plena tensión, el mercado lo lee como confianza en la economía. Lo que sí cambia es **cómo** se transmite (`lp_estado_*.png`, `lp_estado_resumen.csv`):
+
+| +25 pb de la Fed | Mercados tensos | Mercados normales | p de la diferencia |
+|---|---|---|---|
+| 2Y al impacto | +2 pb | +16 pb | 0,04 |
+| 10Y al impacto | −19 pb | +1 pb | 0,005 |
+| EFFR a los 6 meses | +20 pb | +38 pb | 0,17 |
+| Spread HY al impacto | +36 pb | +24 pb | 0,46 |
+| Tecnología a 12 meses | +14% | −2% | 0,05 |
+| IPC a 6 meses | −0,17% | −0,46% | 0,24 |
+
+**Mercados tensos:**
+- La alza casi no mueve el 2Y, porque el mercado anticipa que la Fed no la sostendrá; de hecho, la EFFR se mantiene menos.
+- El 10Y cae por búsqueda de refugio y caída de la prima por plazo.
+- La curva se aplana desde el tramo largo y el spread sube algo más al inicio.
+
+**Mercados normales:**
+- Es el canal "de libro": sube el 2Y, la Fed sostiene el alza y la inflación cae más (−0,3% a −0,5% durante 6 a 24 meses).
+- Con tecnología firme, el IPC cae 0,5-0,7%; con tecnología débil la Fed retrocede (la EFFR a los 6 meses sube 12 pb, frente a 42 pb) y la inflación casi no cae.
+
+**Dónde estamos hoy:** en estado **normal** en ambas medidas. El índice de condiciones financieras está en +1,0 en octubre, holgado, y la tecnología subió 22% en 6 meses. Si la Fed sorprende con alzas ahora, lo esperable es el canal de libro:
+- se mueve el tramo de 2 años;
+- la inflación cae;
+- las acciones tecnológicas sufren poco y sin rebote.
+
+Para reservas, el riesgo de duración está en el tramo de 1 a 2 años, no en el largo.
+
+**Cautelas:**
+- Varias diferencias no son significativas, y las bandas a 24 meses son amplias.
+- El estado tenso concentra episodios de recuperación (2002-03, 2009-10), lo que puede inflar la respuesta real posterior.
+
 ## Pendiente
 
-- Proyecciones locales dependientes del estado: ¿el alza pega más cuando las condiciones financieras ya están débiles?
 - Con el trader: pesos y duración de PL, PL2 y ORO, para pasar de estrategias genéricas a los portafolios reales (en el repositorio privado).
