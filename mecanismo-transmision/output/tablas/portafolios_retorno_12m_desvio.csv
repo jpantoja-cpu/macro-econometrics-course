@@ -1,31 +1,31 @@
 "escenario","estrategia","desvio_pb","usd_por_100MM"
 "Fed +50 pb a enero, luego pausa","Letras 1M (caja)",-1.2,-12110
-"Fed +50 pb a enero, luego pausa","Letras 3M",-0.8,-8158
-"Fed +50 pb a enero, luego pausa","Letras 6M",-0.7,-6774
-"Fed +50 pb a enero, luego pausa","1 año",0.5,5139
-"Fed +50 pb a enero, luego pausa","2 años",3.7,37134
-"Fed +50 pb a enero, luego pausa","Oro",14.1,141416
+"Fed +50 pb a enero, luego pausa","Letras 3M",-0.8,-8155
+"Fed +50 pb a enero, luego pausa","Letras 6M",-0.7,-6693
+"Fed +50 pb a enero, luego pausa","1 año",0.6,5868
+"Fed +50 pb a enero, luego pausa","2 años",3.8,38204
+"Fed +50 pb a enero, luego pausa","Oro",15,150191
 "Fed en pausa (no sube)","Letras 1M (caja)",-38.4,-383750
-"Fed en pausa (no sube)","Letras 3M",-33.5,-335070
-"Fed en pausa (no sube)","Letras 6M",-24.3,-242673
-"Fed en pausa (no sube)","1 año",-3.3,-33139
-"Fed en pausa (no sube)","2 años",37.9,379364
-"Fed en pausa (no sube)","Oro",83.3,833492
+"Fed en pausa (no sube)","Letras 3M",-33.5,-334691
+"Fed en pausa (no sube)","Letras 6M",-24,-240323
+"Fed en pausa (no sube)","1 año",-2.2,-22020
+"Fed en pausa (no sube)","2 años",40.9,409021
+"Fed en pausa (no sube)","Oro",132.5,1325290
 "Fed +100 pb a enero, luego pausa","Letras 1M (caja)",36,359530
-"Fed +100 pb a enero, luego pausa","Letras 3M",31.9,318754
-"Fed +100 pb a enero, luego pausa","Letras 6M",22.9,229124
-"Fed +100 pb a enero, luego pausa","1 año",4.3,43417
-"Fed +100 pb a enero, luego pausa","2 años",-30.5,-305095
-"Fed +100 pb a enero, luego pausa","Oro",-55.1,-550660
+"Fed +100 pb a enero, luego pausa","Letras 3M",31.8,318380
+"Fed +100 pb a enero, luego pausa","Letras 6M",22.7,226937
+"Fed +100 pb a enero, luego pausa","1 año",3.4,33756
+"Fed +100 pb a enero, luego pausa","2 años",-33.3,-332614
+"Fed +100 pb a enero, luego pausa","Oro",-102.5,-1024907
 "Fed +50 pb a enero + corrección tecnológica","Letras 1M (caja)",-1.2,-12110
-"Fed +50 pb a enero + corrección tecnológica","Letras 3M",-0.5,-4906
-"Fed +50 pb a enero + corrección tecnológica","Letras 6M",1.1,11107
-"Fed +50 pb a enero + corrección tecnológica","1 año",8.1,81305
-"Fed +50 pb a enero + corrección tecnológica","2 años",21.7,217031
-"Fed +50 pb a enero + corrección tecnológica","Oro",237.7,2376982
+"Fed +50 pb a enero + corrección tecnológica","Letras 3M",-0.5,-5268
+"Fed +50 pb a enero + corrección tecnológica","Letras 6M",0.9,8895
+"Fed +50 pb a enero + corrección tecnológica","1 año",7.1,70634
+"Fed +50 pb a enero + corrección tecnológica","2 años",19,189998
+"Fed +50 pb a enero + corrección tecnológica","Oro",210.5,2104820
 "Referencia: +50 pb que nadie esperaba","Letras 1M (caja)",39.6,395833
-"Referencia: +50 pb que nadie esperaba","Letras 3M",34.9,349122
-"Referencia: +50 pb que nadie esperaba","Letras 6M",24.7,247144
-"Referencia: +50 pb que nadie esperaba","1 año",4.4,44357
-"Referencia: +50 pb que nadie esperaba","2 años",-33.6,-336101
-"Referencia: +50 pb que nadie esperaba","Oro",-62.9,-628505
+"Referencia: +50 pb que nadie esperaba","Letras 3M",34.9,348722
+"Referencia: +50 pb que nadie esperaba","Letras 6M",24.5,244787
+"Referencia: +50 pb que nadie esperaba","1 año",3.4,33836
+"Referencia: +50 pb que nadie esperaba","2 años",-36.6,-366324
+"Referencia: +50 pb que nadie esperaba","Oro",-114.9,-1149386

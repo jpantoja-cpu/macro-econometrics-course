@@ -12,7 +12,7 @@
 #
 # Dos definiciones de estado "tenso":
 #   1. Condiciones financieras: índice de Bloomberg (BFCIUS) < 0, más restrictivas que lo normal.
-#   2. Tecnología débil: el S&P 500 tecnología cayó en los 6 meses previos.
+#   2. Tecnología débil: el índice tecnológico (Nasdaq 100 por defecto) cayó en los 6 meses previos.
 # Controles: 2 rezagos de las 12 variables del VAR. Errores Newey-West (h + 1 rezagos).
 # Pandemia: se excluyen las ventanas [t−2, t+h] que tocan marzo-agosto de 2020.
 # Salida: respuestas por estado, diferencia y su valor p.
@@ -25,10 +25,14 @@ local({
 source(ruta_vtf("R", "var_funciones.R"))
 suppressPackageStartupMessages({ library(ggplot2); library(sandwich) })
 
-m <- readRDS(ruta("output", "modelo_transmision.rds"))
+TEC <- Sys.getenv("TEC", "nasdaq100"); SUF <- if (TEC == "nasdaq100") "" else paste0("_", TEC)
+.gt <- guardar_tabla; .gf <- guardar_fig
+guardar_tabla <- function(x, nombre, ...) .gt(x, paste0(nombre, SUF), ...)
+guardar_fig <- function(g, nombre, ...) .gf(g, paste0(nombre, SUF), ...)
+m <- readRDS(ruta("output", paste0("modelo_transmision", SUF, ".rds")))
 VARS <- m$VARS; H <- 24
 EN_PB <- c("ffr", "y2y", "y10y", "tp10", "spread_hy", "unemp")
-ETQ <- c(ffr = "EFFR", y2y = "2Y", y10y = "10Y", oro = "Oro (%)", sp500_tec = "Tecnología S&P 500 (%)", spread_hy = "Spread alto rendimiento",
+ETQ <- c(ffr = "EFFR", y2y = "2Y", y10y = "10Y", oro = "Oro (%)", tec = c(nasdaq100 = "Tecnología: Nasdaq 100 (%)", sp500_tec = "Tecnología: S&P 500 tec. (%)")[[TEC]], spread_hy = "Spread alto rendimiento",
          ip = "Producción industrial (%)", nfp = "Empleo: nóminas (%)", unemp = "Desempleo", cpi = "IPC (%)")
 RESP <- names(ETQ)
 
@@ -44,7 +48,7 @@ TT <- nrow(b)
 ESTADOS <- list(
   "Condiciones financieras" = list(I = c(NA, as.numeric(b$cond_fin[-TT] < 0)),
                                    etq = c("Tensas (BFCI < 0)", "Normales (BFCI ≥ 0)")),
-  "Sector tecnológico" = list(I = c(NA, as.numeric((b$sp500_tec - c(rep(NA, 6), head(b$sp500_tec, -6)))[-TT] < 0)),
+  "Sector tecnológico" = list(I = c(NA, as.numeric((b$tec - c(rep(NA, 6), head(b$tec, -6)))[-TT] < 0)),
                               etq = c("Débil (cayó en 6 meses)", "Firme (subió en 6 meses)")))
 COVID <- seq(as.Date("2020-03-01"), as.Date("2020-08-01"), by = "month")
 L <- rezagos_df(b[, VARS], 2)

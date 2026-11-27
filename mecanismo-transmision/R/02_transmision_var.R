@@ -26,6 +26,14 @@ local({
 source(ruta_vtf("R", "var_funciones.R"))
 suppressPackageStartupMessages({ library(ggplot2); library(patchwork) })
 set.seed(2026)
+# Índice tecnológico: Nasdaq 100 por defecto (incluye Alphabet, Meta y Amazon, que la clasificación GICS deja
+# fuera del sector tecnología del S&P 500). Para la comprobación de robustez: Sys.setenv(TEC = "sp500_tec").
+TEC <- Sys.getenv("TEC", "nasdaq100")
+ETQ_TEC <- c(nasdaq100 = "Tecnología: Nasdaq 100 (%)", sp500_tec = "Tecnología: S&P 500 tec. (%)")[[TEC]]
+SUF <- if (TEC == "nasdaq100") "" else paste0("_", TEC)   # la robustez se guarda con sufijo, sin pisar los resultados principales
+.gt <- guardar_tabla; .gf <- guardar_fig
+guardar_tabla <- function(x, nombre, ...) .gt(x, paste0(nombre, SUF), ...)
+guardar_fig <- function(g, nombre, ...) .gf(g, paste0(nombre, SUF), ...)
 
 NBOOT <- as.numeric(Sys.getenv("NBOOT", 500)); H <- 36
 
@@ -43,18 +51,19 @@ base <- base[, c("fecha", "ffr", "y2y", "y10y", "ip", "cpi", "unemp")]
 for (p in list(list(ruta_vtf("data", "raw", "bloomberg_acm.csv"), "tp10"),
                list(ruta_vtf("data", "raw", "bloomberg_curva_macro.csv"), "nfp"),
                list(ruta_rdo("data", "raw", "bloomberg_mercado.csv"), c("dxy", "oro")),
-               list(ruta("data", "raw", "bloomberg_transmision.csv"), c("sp500_tec", "spread_hy", "cond_fin", "bancos")))) {
+               list(ruta("data", "raw", "bloomberg_transmision.csv"), c("nasdaq100", "sp500_tec", "spread_hy", "cond_fin", "bancos")))) {
   base <- merge(base, mensual(p[[1]], p[[2]]), by = "fecha", all.x = TRUE)
 }
 base <- base[order(base$fecha), ]
-for (v in c("dxy", "oro", "sp500_tec", "nfp")) base[[v]] <- 100 * log(base[[v]])
+for (v in c("dxy", "oro", "nasdaq100", "sp500_tec", "nfp")) base[[v]] <- 100 * log(base[[v]])
+base$tec <- base[[TEC]]                                  # índice tecnológico elegido (100 × log)
 if (max(base$spread_hy, na.rm = TRUE) > 50) base$spread_hy <- base$spread_hy / 100   # pb -> pp si viene en pb
-VARS <- c("ffr", "y2y", "y10y", "tp10", "dxy", "oro", "sp500_tec", "spread_hy", "ip", "nfp", "unemp", "cpi")
+VARS <- c("ffr", "y2y", "y10y", "tp10", "dxy", "oro", "tec", "spread_hy", "ip", "nfp", "unemp", "cpi")
 ETQ <- c(ffr = "EFFR", y2y = "2Y", y10y = "10Y", tp10 = "Prima por plazo 10Y", dxy = "Dólar DXY (%)", oro = "Oro (%)",
-         sp500_tec = "Tecnología S&P 500 (%)", spread_hy = "Spread alto rendimiento", ip = "Producción industrial (%)",
+         tec = ETQ_TEC, spread_hy = "Spread alto rendimiento", ip = "Producción industrial (%)",
          nfp = "Empleo: nóminas (%)", unemp = "Desempleo", cpi = "IPC (%)")
 BLOQUE <- c(ffr = "Política", y2y = "Financiero", y10y = "Financiero", tp10 = "Financiero", dxy = "Financiero", oro = "Financiero",
-            sp500_tec = "Financiero", spread_hy = "Financiero", ip = "Real", nfp = "Real", unemp = "Real", cpi = "Real")
+            tec = "Financiero", spread_hy = "Financiero", ip = "Real", nfp = "Real", unemp = "Real", cpi = "Real")
 EN_PB <- c("ffr", "y2y", "y10y", "tp10", "spread_hy", "unemp")       # tasas/spreads/desempleo en pp -> se grafican en pb
 
 d <- base[base$fecha >= as.Date("1994-01-01"), c("fecha", VARS)]; d <- d[complete.cases(d), ]
@@ -96,8 +105,8 @@ proxy_bootstrap_ex <- function(v, z, j, H, escala, nboot, fechas_u, semilla = 99
 }
 fu <- d$fecha[(P + 1):nrow(d)]
 v <- var_ols_ex(Y, P, fu)
-message(sprintf("VAR transmisión %s a %s: T=%d, N=%d, p=%d (AIC=%d, BIC=%d, HQ=%d), raíz máx.=%.3f",
-                format(d$fecha[1], "%Y-%m"), format(max(d$fecha), "%Y-%m"), v$TT, v$N, P, sel[["AIC"]], sel[["BIC"]], sel[["HQ"]], max(raices(v))))
+message(sprintf("[%s] VAR transmisión %s a %s: T=%d, N=%d, p=%d (AIC=%d, BIC=%d, HQ=%d), raíz máx.=%.3f",
+                TEC, format(d$fecha[1], "%Y-%m"), format(max(d$fecha), "%Y-%m"), v$TT, v$N, P, sel[["AIC"]], sel[["BIC"]], sel[["HQ"]], max(raices(v))))
 
 # Choque 1: política (instrumento externo) -----------------------------------------------
 # La sorpresa de futuros de fed funds (target) mezcla dos cosas: el endurecimiento "puro" y la
@@ -181,7 +190,7 @@ guardar_tabla(cmp, "irf_politica_instrumentos")
 guardar_tabla(data.frame(instrumento = c("Bauer-Swanson", "Total", "Acciones opuestas"),
                          rbind(fe, alt$total$fe, alt$monetaria$fe), replicas = c(pb$nboot_ok, alt$total$pb$nboot_ok, alt$monetaria$pb$nboot_ok)),
               "primera_etapa_instrumentos")
-cr <- cmp[cmp$variable %in% c("sp500_tec", "ip", "nfp", "unemp", "cpi", "y10y"), ]
+cr <- cmp[cmp$variable %in% c("tec", "ip", "nfp", "unemp", "cpi", "y10y"), ]
 kk <- ifelse(cr$variable %in% EN_PB, 100, 1); for (cc in c("irf", "q16", "q84")) cr[[cc]] <- cr[[cc]] * kk
 cr$variable <- factor(paste0(ETQ[cr$variable], ifelse(cr$variable %in% EN_PB, " (pb)", "")))
 gcmp <- ggplot(cr, aes(h, irf, colour = instrumento, fill = instrumento)) + geom_hline(yintercept = 0, colour = "grey50") +
@@ -198,7 +207,7 @@ guardar_fig(gcmp, "politica_instrumentos", ancho = 10, alto = 6)
 # de política: q' A^{-1} s_pol = 0 (los choques estructurales no se correlacionan).
 A <- t(chol(v$Sigma)); s_pol <- pb$impacto / pb$impacto[jF] * sqrt(v$Sigma[jF, jF])
 w <- solve(A, s_pol); w <- w / sqrt(sum(w^2))
-signos <- function(a) a[VARS == "sp500_tec"] < 0 && a[VARS == "spread_hy"] > 0 && a[VARS == "ffr"] <= 0 &&
+signos <- function(a) a[VARS == "tec"] < 0 && a[VARS == "spread_hy"] > 0 && a[VARS == "ffr"] <= 0 &&
   a[VARS == "ip"] <= 0 && a[VARS == "nfp"] <= 0 && a[VARS == "unemp"] >= 0     # el estrés no mejora la actividad en el mes
 acept <- list(); intentos <- 0
 while (length(acept) < 500 && intentos < 500000) {
@@ -214,10 +223,10 @@ dr <- simplify2array(lapply(acept, irf_imp)); dimnames(dr) <- list(NULL, VARS, N
 # Entre las rotaciones admisibles se elige la que más explica las acciones tecnológicas en el mes del
 # choque (criterio de penalización de Uhlig 2005 / "máxima participación"): así el choque es sobre todo
 # tecnológico y no una mezcla con otros choques reales. Las bandas usan todas las rotaciones aceptadas.
-a_tec <- acept[[which.max(sapply(acept, function(a) -a[VARS == "sp500_tec"]))]]
+a_tec <- acept[[which.max(sapply(acept, function(a) -a[VARS == "tec"]))]]
 ib_tec <- list(base = irf_imp(a_tec), draws = dr, H = H); colnames(ib_tec$base) <- VARS
 irf_tec <- cbind(choque = "Estrés tecnológico: 1 d.e.", irf_tabla(ib_tec))
-write.csv(data.frame(variable = VARS, impacto = a_tec), ruta("output", "tablas", "impacto_choque_tecnologico.csv"), row.names = FALSE)
+guardar_tabla(data.frame(variable = VARS, impacto = a_tec), "impacto_choque_tecnologico")
 
 IRF <- rbind(irf_pol, irf_tec); guardar_tabla(IRF, "irf_transmision")
 guardar_tabla(cbind(fe, rezagos = P, T = v$TT, aceptadas_signos = length(acept), intentos_signos = intentos), "resumen_identificacion")
@@ -283,7 +292,7 @@ DEF <- list(
   "Fed +50 pb a enero + corrección tecnológica" = list(pasos = c(0.25, 0.25, 0, 0), tec = -15),
   "Referencia: +50 pb que nadie esperaba" = list(desv = c(0, 0.25, rep(0.5, 10)), tec = 0))
 MES_TEC <- 3                                  # la corrección tecnológica ocurre en el tercer mes (enero de 2027)
-escala_tec <- function(caida) caida / a_tec[VARS == "sp500_tec"]   # cuántas "unidades" del choque dan esa caída al impacto
+escala_tec <- function(caida) caida / a_tec[VARS == "tec"]   # cuántas "unidades" del choque dan esa caída al impacto
 escenario <- function(desv, tec) {
   ch <- matrix(0, HS, 2); if (tec != 0) ch[MES_TEC, 2] <- escala_tec(tec)
   b0 <- pronostico(ch)                        # con el choque tecnológico pero sin choques de política
@@ -311,7 +320,7 @@ res <- ESC[ESC$h %in% c(3, 6, 12, 24), c("escenario", "h", VARS)]
 res[, VARS] <- round(res[, VARS], 2); print(res, row.names = FALSE)
 
 # Gráfico: variables seleccionadas, desvío respecto de la trayectoria de mercado
-SEL <- c("ffr", "y2y", "y10y", "dxy", "oro", "sp500_tec", "spread_hy", "ip", "unemp", "cpi")
+SEL <- c("ffr", "y2y", "y10y", "dxy", "oro", "tec", "spread_hy", "ip", "unemp", "cpi")
 el <- do.call(rbind, lapply(SEL, function(k) data.frame(escenario = ESC$escenario, h = ESC$h, variable = k, valor = ESC[[k]])))
 el$variable <- factor(paste0(ETQ[el$variable], ifelse(el$variable %in% EN_PB, " (pb)", "")),
                       levels = paste0(ETQ[SEL], ifelse(SEL %in% EN_PB, " (pb)", "")))
@@ -326,4 +335,4 @@ g <- ggplot(el, aes(h, valor, colour = escenario, linetype = escenario)) + geom_
   tema_limpio(9) + guides(colour = guide_legend(ncol = 2))
 guardar_fig(g, "escenarios_condicionales", ancho = 12, alto = 6.5)
 saveRDS(list(v = v, s_pol = s_pol, a_tec = a_tec, VARS = VARS, ESC = ESC, TRAY = TRAY_EFFR, base_f = base_f, d = d, f_dat = f_dat, Z = Z, base = base),
-        ruta("output", "modelo_transmision.rds"))
+        ruta("output", paste0("modelo_transmision", SUF, ".rds")))

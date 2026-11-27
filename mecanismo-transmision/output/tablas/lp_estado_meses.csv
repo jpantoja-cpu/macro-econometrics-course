@@ -1,5 +1,5 @@
 "estado","condicion","meses","choque_de_desv_est"
-"Condiciones financieras","Tensas (BFCI < 0)",159,0.359
-"Condiciones financieras","Normales (BFCI ≥ 0)",234,0.252
-"Sector tecnológico","Débil (cayó en 6 meses)",102,0.403
-"Sector tecnológico","Firme (subió en 6 meses)",285,0.251
+"Condiciones financieras","Tensas (BFCI < 0)",159,0.361
+"Condiciones financieras","Normales (BFCI ≥ 0)",234,0.253
+"Sector tecnológico","Débil (cayó en 6 meses)",89,0.43
+"Sector tecnológico","Firme (subió en 6 meses)",298,0.249
