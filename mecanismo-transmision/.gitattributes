@@ -1,0 +1,2 @@
+# Los .bat de Windows necesitan fin de línea CRLF
+*.bat text eol=crlf
