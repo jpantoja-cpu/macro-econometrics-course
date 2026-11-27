@@ -8,7 +8,8 @@
 # Choque 1 — política monetaria: instrumento externo = sorpresa target de futuros de fed funds
 #   (ponderación Gertler-Karadi, proyecto var-tasas-fed). Normalizado a +25 pb en la EFFR.
 # Choque 2 — estrés tecnológico: restricciones de signo al impacto (Uhlig 2005; algoritmo de
-#   Rubio-Ramírez, Waggoner y Zha 2010): tecnología cae, spread HY sube, EFFR no sube.
+#   Rubio-Ramírez, Waggoner y Zha 2010): tecnología cae, spread HY sube, EFFR no sube y la actividad
+#   (producción, nóminas, desempleo) no mejora en el mes.
 #   Se exige además que sea ortogonal al choque de política identificado con el instrumento.
 # Escenario condicional (Waggoner y Zha 1999, versión con choques de política): la secuencia de
 #   choques de política que deja la EFFR 25 pb por encima de su trayectoria base en el mes 1 y 50 pb
@@ -60,24 +61,92 @@ d <- base[base$fecha >= as.Date("1994-01-01"), c("fecha", VARS)]; d <- d[complet
 Y <- as.matrix(d[, VARS])
 ic <- seleccion_rezagos(Y, 6); sel <- sapply(ic[, c("AIC", "BIC", "HQ")], which.min)
 P <- max(2, min(sel[["HQ"]], 4))
-v <- var_ols(Y, P)
+# Pandemia: marzo-agosto de 2020 tienen movimientos de empleo y producción 10-20 veces lo normal y
+# dominarían las covarianzas (Lenza y Primiceri 2022). Se tratan con una variable ficticia por mes,
+# lo que equivale a excluir esas ecuaciones de la estimación (sus residuos quedan en cero).
+COVID <- seq(as.Date("2020-03-01"), as.Date("2020-08-01"), by = "month")
+var_ols_ex <- function(Y, p, fechas_u) {
+  m <- var_matrices(Y, p); keep <- !(fechas_u %in% COVID)
+  Xk <- m$X[keep, , drop = FALSE]
+  B <- solve(crossprod(Xk), crossprod(Xk, m$Y[keep, , drop = FALSE]))
+  U <- m$Y - m$X %*% B; U[!keep, ] <- 0
+  TT <- sum(keep); K <- ncol(m$X); Sigma <- crossprod(U) / (TT - K)
+  structure(list(B = B, U = U, Sigma = Sigma, Sigma_ml = crossprod(U) / TT, X = m$X, Yd = m$Y, Y = as.matrix(Y),
+                 N = m$N, p = p, TT = nrow(m$Y), K = K, nombres = colnames(Y), keep = keep), class = "mivar")
+}
+proxy_bootstrap_ex <- function(v, z, j, H, escala, nboot, fechas_u, semilla = 99) {
+  set.seed(semilla); z[!v$keep] <- NA
+  s0 <- proxy_impacto(v$U, z, j, escala)
+  base <- irf_desde_impacto(v$B, v$N, v$p, H, s0); colnames(base) <- v$nombres
+  Y0 <- v$Y[1:v$p, , drop = FALSE]; A <- v$B[-1, , drop = FALSE]; c0 <- v$B[1, ]
+  draws <- array(NA_real_, c(H + 1, v$N, nboot))
+  for (b in 1:nboot) {
+    w <- sample(c(-1, 1), v$TT, replace = TRUE); Ub <- v$U * w; zb <- z * w
+    Ys <- matrix(0, v$TT + v$p, v$N); Ys[1:v$p, ] <- Y0
+    for (t in 1:v$TT) Ys[t + v$p, ] <- c0 + as.vector(t(Ys[(t + v$p - 1):t, , drop = FALSE])) %*% A + Ub[t, ]
+    colnames(Ys) <- v$nombres
+    vb <- var_ols_ex(Ys, v$p, fechas_u)
+    if (max(raices(vb)) >= 1.05) next
+    sb <- proxy_impacto(vb$U, zb, j, escala)
+    if (!all(is.finite(sb)) || max(abs(sb)) > 50 * escala) next
+    draws[, , b] <- irf_desde_impacto(vb$B, v$N, v$p, H, sb)
+  }
+  ok <- !is.na(draws[1, 1, ]); dr <- draws[, , ok, drop = FALSE]; dimnames(dr) <- list(NULL, v$nombres, NULL)
+  list(base = base, draws = dr, H = H, nboot_ok = sum(ok), impacto = setNames(s0, v$nombres))
+}
+fu <- d$fecha[(P + 1):nrow(d)]
+v <- var_ols_ex(Y, P, fu)
 message(sprintf("VAR transmisión %s a %s: T=%d, N=%d, p=%d (AIC=%d, BIC=%d, HQ=%d), raíz máx.=%.3f",
                 format(d$fecha[1], "%Y-%m"), format(max(d$fecha), "%Y-%m"), v$TT, v$N, P, sel[["AIC"]], sel[["BIC"]], sel[["HQ"]], max(raices(v))))
 
 # Choque 1: política (instrumento externo) -----------------------------------------------
-# Efecto información de la Fed (Jarociński y Karadi 2020): una sorpresa de tasas acompañada de una
-# SUBIDA de las acciones el mismo día refleja sobre todo noticias de la Fed sobre una economía fuerte,
-# no un endurecimiento puro. Versión "poor man's": la sorpresa monetaria pura usa solo los días FOMC en
-# que la sorpresa target y el S&P 500 se movieron en sentido opuesto; el resto es "información".
-# Ambas series se agregan por mes con la ponderación de Gertler-Karadi.
+# La sorpresa de futuros de fed funds (target) mezcla dos cosas: el endurecimiento "puro" y la
+# respuesta de la Fed a noticias económicas que el mercado aún no había incorporado. Si se usa tal cual,
+# un alza aparece asociada a una economía que mejora (acciones arriba, desempleo abajo).
+# Instrumento principal — Bauer y Swanson (2023): la sorpresa se ortogonaliza respecto de información
+# macro-financiera disponible ANTES de la reunión: sorpresa de nóminas del último dato, crecimiento
+# del empleo a 12 meses, variación a 3 meses del S&P 500, de la pendiente 10Y-3M y de materias primas.
+# Robustez — "poor man's" de Jarociński y Karadi (2020): solo los días en que la sorpresa y el S&P 500
+# se movieron en sentido opuesto. Con ventana DIARIA (no de 30 minutos) este criterio selecciona días
+# en que las acciones cayeron por cualquier motivo, por eso se reporta solo como comparación.
 ev <- read.csv(ruta_vtf("data", "sorpresas_fomc.csv")); ev$fecha_evento <- as.Date(ev$fecha_evento)
 ev <- ev[!as.logical(ev$excluir_base) & !is.na(ev$target_pb), ]
-tr <- read.csv(ruta("data", "raw", "bloomberg_transmision.csv"), stringsAsFactors = FALSE)
-sp <- tr[tr$var == "sp500", c("fecha", "valor")]; sp$fecha <- as.Date(sp$fecha); sp <- sp[order(sp$fecha), ]
+diaria <- function(archivo, v) {
+  x <- read.csv(archivo, stringsAsFactors = FALSE); x <- x[x$var == v, c("fecha", "valor")]
+  x$fecha <- as.Date(x$fecha); x[order(x$fecha), ]
+}
+sp <- diaria(ruta("data", "raw", "bloomberg_transmision.csv"), "sp500")
+y10 <- diaria(ruta_vtf("data", "raw", "bloomberg_tasas.csv"), "y10y"); y3m <- diaria(ruta_vtf("data", "raw", "bloomberg_tasas.csv"), "y3m")
+bcom <- diaria(ruta_vtf("data", "raw", "bloomberg_tasas.csv"), "bcom")
+pend <- merge(y10, y3m, by = "fecha"); pend <- data.frame(fecha = pend$fecha, valor = pend$valor.x - pend$valor.y)
+ultimo <- function(s, f) { i <- findInterval(as.numeric(f), as.numeric(s$fecha)); ifelse(i > 0, s$valor[pmax(i, 1)], NA) }
+var3m <- function(s, f, log = TRUE) {           # cambio entre ~3 meses antes y el día previo a la reunión
+  a <- ultimo(s, f - 1); b <- ultimo(s, f - 92); if (log) 100 * log(a / b) else a - b
+}
+ev$sp_3m <- var3m(sp, ev$fecha_evento); ev$bcom_3m <- var3m(bcom, ev$fecha_evento); ev$pend_3m <- var3m(pend, ev$fecha_evento, FALSE)
+no <- read.csv(ruta_vtf("data", "raw", "bloomberg_noticias.csv"), stringsAsFactors = FALSE); no <- no[no$var == "nominas", ]
+nw <- reshape(no[, c("fecha_obs", "campo", "valor")], idvar = "fecha_obs", timevar = "campo", direction = "wide")
+nw <- data.frame(pub = as.Date(nw$valor.ECO_RELEASE_DT), sorp = as.numeric(nw$valor.ACTUAL_RELEASE) - as.numeric(nw$valor.BN_SURVEY_MEDIAN),
+                 nivel = as.numeric(nw$valor.PX_LAST), obs = as.Date(nw$fecha_obs))
+nw <- nw[!is.na(nw$pub), ]; nw <- nw[order(nw$pub), ]
+iu <- findInterval(as.numeric(ev$fecha_evento - 1), as.numeric(nw$pub))
+ev$nfp_sorp <- ifelse(iu > 0, nw$sorp[pmax(iu, 1)], NA)
+ev$nfp_sorp <- ev$nfp_sorp / sd(ev$nfp_sorp, na.rm = TRUE); ev$nfp_sorp[is.na(ev$nfp_sorp)] <- 0   # sin encuesta antes de 1997: 0
+emp <- read.csv(ruta_vtf("data", "raw", "bloomberg_curva_macro.csv")); emp <- emp[emp$var == "nfp", ]; emp$fecha <- as.Date(emp$fecha)
+emp <- aggregate(valor ~ fecha, emp, mean); emp <- emp[order(emp$fecha), ]
+# crecimiento a 12 meses del último nivel de empleo publicado antes de la reunión (rezago de publicación: 1 mes)
+ev$emp_12m <- sapply(ev$fecha_evento, function(f) {
+  m <- as.Date(format(f, "%Y-%m-01")); m1 <- seq(m, by = "-1 month", length.out = 3)[3]; m13 <- seq(m1, by = "-12 months", length.out = 2)[2]
+  a <- emp$valor[findInterval(as.numeric(m1 + 27), as.numeric(emp$fecha))]; b <- emp$valor[findInterval(as.numeric(m13 + 27), as.numeric(emp$fecha))]
+  if (length(a) && length(b)) 100 * log(a / b) else NA })
+bs <- lm(target_pb ~ nfp_sorp + emp_12m + sp_3m + pend_3m + bcom_3m, data = ev, na.action = na.exclude)
+ev$target_bs <- residuals(bs)
+cf <- summary(bs)$coefficients; tb <- data.frame(regresor = rownames(cf), round(cf, 3), R2 = round(summary(bs)$r.squared, 3), n = nobs(bs))
+guardar_tabla(tb, "bauer_swanson_regresion"); print(tb, row.names = FALSE)
 ev$d_sp <- sapply(ev$fecha_evento, function(f) { i <- match(f, sp$fecha); if (is.na(i) || i < 2) NA else 100 * log(sp$valor[i] / sp$valor[i - 1]) })
 ev$tipo <- ifelse(is.na(ev$d_sp), NA, ifelse(sign(ev$target_pb) * sign(ev$d_sp) < 0, "monetaria", "informacion"))
 pondera_gk <- function(fechas, valores, meses) {
-  z <- setNames(rep(0, length(meses)), as.character(meses))
+  z <- setNames(rep(0, length(meses)), as.character(meses)); ok <- !is.na(valores); fechas <- fechas[ok]; valores <- valores[ok]
   for (i in seq_along(fechas)) {
     m <- as.Date(format(fechas[i], "%Y-%m-01")); m2 <- seq(m, by = "month", length.out = 2)[2]
     Dm <- as.numeric(format(m2 - 1, "%d")); dd <- as.numeric(format(fechas[i], "%d"))
@@ -87,47 +156,52 @@ pondera_gk <- function(fechas, valores, meses) {
   unname(z)
 }
 meses_z <- seq(as.Date("1994-01-01"), max(d$fecha), by = "month")
-ok <- !is.na(ev$tipo)
+mon <- !is.na(ev$tipo) & ev$tipo == "monetaria"
 Z <- data.frame(fecha = meses_z,
-                total = pondera_gk(ev$fecha_evento[ok], ev$target_pb[ok], meses_z),
-                monetaria = pondera_gk(ev$fecha_evento[ok & ev$tipo == "monetaria"], ev$target_pb[ok & ev$tipo == "monetaria"], meses_z),
-                informacion = pondera_gk(ev$fecha_evento[ok & ev$tipo == "informacion"], ev$target_pb[ok & ev$tipo == "informacion"], meses_z))
+                total = pondera_gk(ev$fecha_evento, ev$target_pb, meses_z),
+                bauer_swanson = pondera_gk(ev$fecha_evento, ev$target_bs, meses_z),
+                monetaria = pondera_gk(ev$fecha_evento[mon], ev$target_pb[mon], meses_z))
 guardar_tabla(data.frame(tipo = c("monetaria", "informacion"), n_eventos = c(sum(ev$tipo == "monetaria", na.rm = TRUE), sum(ev$tipo == "informacion", na.rm = TRUE))),
               "eventos_monetaria_vs_informacion")
-fu <- d$fecha[(P + 1):nrow(d)]
-z <- Z$monetaria[match(fu, Z$fecha)]                     # instrumento principal: sorpresa monetaria pura
-z_total <- Z$total[match(fu, Z$fecha)]
-pb_total <- proxy_bootstrap(v, z_total, which(VARS == "ffr"), H, 0.25, NBOOT)
-fe_total <- primera_etapa(v$U, z_total, which(VARS == "ffr"))
+z <- Z$bauer_swanson[match(fu, Z$fecha)]; z[!v$keep] <- NA  # instrumento principal (sin meses de pandemia)
 jF <- which(VARS == "ffr")
+alt <- lapply(c(total = "total", monetaria = "monetaria"), function(k) {
+  zk <- Z[[k]][match(fu, Z$fecha)]; zk[!v$keep] <- NA
+  list(pb = proxy_bootstrap_ex(v, zk, jF, H, 0.25, NBOOT, fu), fe = primera_etapa(v$U, zk, jF))
+})
 fe <- primera_etapa(v$U, z, jF)
-pb <- proxy_bootstrap(v, z, jF, H, 0.25, NBOOT)
+pb <- proxy_bootstrap_ex(v, z, jF, H, 0.25, NBOOT, fu)
 message(sprintf("Choque de política: F primera etapa = %.1f; réplicas válidas = %d", fe$F_robusto, pb$nboot_ok))
 irf_pol <- cbind(choque = "Política: +25 pb en la EFFR", irf_tabla(pb))
-message(sprintf("Comparación: instrumento total (con efecto información) F = %.1f", fe_total$F_robusto))
-cmp <- rbind(cbind(instrumento = "Sorpresa monetaria pura (acciones en sentido opuesto)", irf_tabla(pb)),
-             cbind(instrumento = "Sorpresa total (incluye efecto información)", irf_tabla(pb_total)))
-guardar_tabla(cmp, "irf_politica_pura_vs_total")
+message(sprintf("Comparación: F total = %.1f; F 'poor man's' = %.1f", alt$total$fe$F_robusto, alt$monetaria$fe$F_robusto))
+cmp <- rbind(cbind(instrumento = "Bauer-Swanson (principal)", irf_tabla(pb)),
+             cbind(instrumento = "Sorpresa total (sin limpiar)", irf_tabla(alt$total$pb)),
+             cbind(instrumento = "Solo días con acciones en sentido opuesto", irf_tabla(alt$monetaria$pb)))
+guardar_tabla(cmp, "irf_politica_instrumentos")
+guardar_tabla(data.frame(instrumento = c("Bauer-Swanson", "Total", "Acciones opuestas"),
+                         rbind(fe, alt$total$fe, alt$monetaria$fe), replicas = c(pb$nboot_ok, alt$total$pb$nboot_ok, alt$monetaria$pb$nboot_ok)),
+              "primera_etapa_instrumentos")
 cr <- cmp[cmp$variable %in% c("sp500_tec", "ip", "nfp", "unemp", "cpi", "y10y"), ]
 kk <- ifelse(cr$variable %in% EN_PB, 100, 1); for (cc in c("irf", "q16", "q84")) cr[[cc]] <- cr[[cc]] * kk
 cr$variable <- factor(paste0(ETQ[cr$variable], ifelse(cr$variable %in% EN_PB, " (pb)", "")))
 gcmp <- ggplot(cr, aes(h, irf, colour = instrumento, fill = instrumento)) + geom_hline(yintercept = 0, colour = "grey50") +
   geom_ribbon(aes(ymin = q16, ymax = q84), alpha = 0.12, colour = NA) + geom_line(linewidth = 0.8) +
-  facet_wrap(~variable, scales = "free_y", ncol = 3) + scale_colour_manual(values = c("#d1495b", "#0b3c5d")) +
-  scale_fill_manual(values = c("#d1495b", "#0b3c5d")) +
-  labs(title = "Separar el efecto información cambia la lectura del choque de la Fed",
-       subtitle = "Respuesta a +25 pb en la EFFR con dos instrumentos; bandas 68%", x = "Meses", y = NULL, colour = NULL, fill = NULL) +
+  facet_wrap(~variable, scales = "free_y", ncol = 3) + scale_colour_manual(values = c("#0b3c5d", "#8d99ae", "#d1495b")) +
+  scale_fill_manual(values = c("#0b3c5d", "#8d99ae", "#d1495b")) +
+  labs(title = "Limpiar la sorpresa de la Fed cambia la lectura del choque",
+       subtitle = "Respuesta a +25 pb en la EFFR con tres instrumentos; bandas 68%", x = "Meses", y = NULL, colour = NULL, fill = NULL) +
   tema_limpio(9) + guides(colour = guide_legend(ncol = 1))
-guardar_fig(gcmp, "politica_pura_vs_total", ancho = 10, alto = 6)
+guardar_fig(gcmp, "politica_instrumentos", ancho = 10, alto = 6)
 
 # Choque 2: estrés tecnológico (restricciones de signo, ortogonal al de política) ----------
 # Impactos admisibles a = A q, con A = chol(Sigma)' y q unitario. Ortogonalidad con el choque
 # de política: q' A^{-1} s_pol = 0 (los choques estructurales no se correlacionan).
 A <- t(chol(v$Sigma)); s_pol <- pb$impacto / pb$impacto[jF] * sqrt(v$Sigma[jF, jF])
 w <- solve(A, s_pol); w <- w / sqrt(sum(w^2))
-signos <- function(a) a[VARS == "sp500_tec"] < 0 && a[VARS == "spread_hy"] > 0 && a[VARS == "ffr"] <= 0
+signos <- function(a) a[VARS == "sp500_tec"] < 0 && a[VARS == "spread_hy"] > 0 && a[VARS == "ffr"] <= 0 &&
+  a[VARS == "ip"] <= 0 && a[VARS == "nfp"] <= 0 && a[VARS == "unemp"] >= 0     # el estrés no mejora la actividad en el mes
 acept <- list(); intentos <- 0
-while (length(acept) < 300 && intentos < 200000) {
+while (length(acept) < 500 && intentos < 500000) {
   intentos <- intentos + 1
   q <- rnorm(v$N); q <- q - sum(q * w) * w; q <- q / sqrt(sum(q^2))    # ortogonal al de política
   a <- as.vector(A %*% q)
@@ -137,10 +211,10 @@ message(sprintf("Estrés tecnológico: %d rotaciones aceptadas de %d intentos", 
 Phi <- ma_coef(v$B, v$N, v$p, H)
 irf_imp <- function(a) t(sapply(1:(H + 1), function(h) Phi[, , h] %*% a))
 dr <- simplify2array(lapply(acept, irf_imp)); dimnames(dr) <- list(NULL, VARS, NULL)
-# Mediana punto a punto + la rotación más cercana a la mediana (Fry y Pagan 2011) como respuesta "central"
-med <- apply(dr, c(1, 2), median)
-dist <- sapply(seq_along(acept), function(k) sum(((dr[, , k] - med) / apply(dr, c(1, 2), sd))^2))
-a_tec <- acept[[which.min(dist)]]
+# Entre las rotaciones admisibles se elige la que más explica las acciones tecnológicas en el mes del
+# choque (criterio de penalización de Uhlig 2005 / "máxima participación"): así el choque es sobre todo
+# tecnológico y no una mezcla con otros choques reales. Las bandas usan todas las rotaciones aceptadas.
+a_tec <- acept[[which.max(sapply(acept, function(a) -a[VARS == "sp500_tec"]))]]
 ib_tec <- list(base = irf_imp(a_tec), draws = dr, H = H); colnames(ib_tec$base) <- VARS
 irf_tec <- cbind(choque = "Estrés tecnológico: 1 d.e.", irf_tabla(ib_tec))
 write.csv(data.frame(variable = VARS, impacto = a_tec), ruta("output", "tablas", "impacto_choque_tecnologico.csv"), row.names = FALSE)
@@ -162,17 +236,21 @@ graf_bloque <- function(ch, bloque, titulo, sub) {
 }
 cap <- sprintf("VAR(%d) mensual %s a %s. Bandas 68%% y 90%%.", P, format(d$fecha[1], "%Y"), format(max(d$fecha), "%Y"))
 guardar_fig(graf_bloque(irf_pol$choque[1], c("Política", "Financiero"), "Choque de política (+25 pb): el bloque financiero reacciona primero",
-                        paste("Instrumento externo: sorpresas de futuros de fed funds (F =", round(fe$F_robusto, 1), ").", cap)), "irf_politica_financiero", 11, 6)
+                        paste("Instrumento: sorpresa de futuros de fed funds limpia de noticias previas (Bauer-Swanson; F =", round(fe$F_robusto, 1), ").", cap)), "irf_politica_financiero", 11, 6)
 guardar_fig(graf_bloque(irf_pol$choque[1], "Real", "Choque de política (+25 pb): la economía real responde con rezago", cap), "irf_politica_real", 11, 3.6)
 guardar_fig(graf_bloque(irf_tec$choque[1], c("Política", "Financiero"), "Choque de estrés tecnológico (1 d.e.): mercados",
-                        paste("Signos al impacto: tecnología < 0, spread HY > 0, EFFR ≤ 0; ortogonal al choque de política.", cap)), "irf_tecnologico_financiero", 11, 6)
+                        paste("Signos al impacto: tecnología < 0, spread HY > 0, EFFR ≤ 0, actividad no mejora; ortogonal al choque de política.", cap)), "irf_tecnologico_financiero", 11, 6)
 guardar_fig(graf_bloque(irf_tec$choque[1], "Real", "Choque de estrés tecnológico (1 d.e.): economía real", cap), "irf_tecnologico_real", 11, 3.6)
 
 # Escenarios condicionales -------------------------------------------------------------------
-# Pronóstico base desde el último mes; luego se agregan choques: de política (para que la EFFR siga
-# la trayectoria pedida) y, en el escenario combinado, un choque tecnológico de 2 d.e. en el mes 3.
+# Lo que mueve a la economía no es el alza en sí sino la parte que el mercado NO esperaba. Por eso los
+# escenarios se definen como desvío de la EFFR respecto de la trayectoria que hoy descuentan los futuros
+# de fed funds (FF1-FF6; después del mes 6 se supone plana). El VAR es lineal: el desvío de cada variable
+# respecto de su trayectoria "de mercado" depende solo del desvío de la EFFR (y del choque tecnológico).
+# Reuniones de decisión (calendario de la Fed): 9-dic-2026, 27-ene-2027, 17-mar-2027, 28-abr-2027;
+# la EFFR cambia al día siguiente.
 HS <- 24
-pronostico <- function(choques) {           # choques: HS x 2 (política en unidades del impacto s_pol; tecnológico en d.e.)
+pronostico <- function(choques) {           # choques: HS x 2 (política en unidades del impacto s_pol; tecnológico en unidades de a_tec)
   Yh <- rbind(Y, matrix(NA, HS, v$N)); TT <- nrow(Y)
   for (t in 1:HS) {
     x <- c(1, as.vector(t(Yh[(TT + t - 1):(TT + t - P), , drop = FALSE])))
@@ -181,34 +259,71 @@ pronostico <- function(choques) {           # choques: HS x 2 (política en unid
   Yh[(TT + 1):(TT + HS), , drop = FALSE]
 }
 base_f <- pronostico(matrix(0, HS, 2)); colnames(base_f) <- VARS
-desv_obj <- c(0.25, rep(0.50, 11))                                        # +25 pb en el mes 1, +50 pb en los meses 2-12
-choques_pol <- function(extra_tec = NULL) {
-  ch <- matrix(0, HS, 2); if (!is.null(extra_tec)) ch[extra_tec[1], 2] <- extra_tec[2]
-  for (t in seq_along(desv_obj)) {           # resuelve mes a mes el choque que deja la EFFR en base + desvío
-    f0 <- pronostico(ch)[t, jF]
-    ch[t, 1] <- (base_f[t, jF] + desv_obj[t] - f0) / s_pol[jF]
-  }
-  ch
-}
-ch1 <- choques_pol(); esc1 <- pronostico(ch1)
-ch2 <- choques_pol(c(3, 2)); esc2 <- pronostico(ch2)
-colnames(esc1) <- colnames(esc2) <- VARS
 meses <- seq(max(d$fecha), by = "month", length.out = HS + 1)[-1]
-desvio <- function(e, nombre) data.frame(escenario = nombre, mes = meses, h = 1:HS,
-                                         do.call(cbind, lapply(VARS, function(k) setNames(data.frame((e[, k] - base_f[, k]) * ifelse(k %in% EN_PB, 100, 1)), k))))
-ESC <- rbind(desvio(esc1, "Fed +50 pb sobre la base"), desvio(esc2, "Fed +50 pb + estrés tecnológico"))
-guardar_tabla(ESC, "escenarios_desvio_vs_base")
-guardar_tabla(data.frame(mes = meses, base_effr = base_f[, "ffr"], esc1_effr = esc1[, "ffr"], esc2_effr = esc2[, "ffr"],
-                         choque_pol_esc1 = ch1[, 1], choque_pol_esc2 = ch2[, 1]), "escenarios_trayectoria_effr")
+
+# Trayectoria de mercado: promedio mensual implícito en futuros (precio = 100 - tasa)
+fu_f <- read.csv(ruta_vtf("data", "raw", "bloomberg_futuros.csv"), stringsAsFactors = FALSE); fu_f$fecha <- as.Date(fu_f$fecha)
+f_dat <- max(fu_f$fecha); fx <- fu_f[fu_f$fecha == f_dat, ]
+effr_d <- read.csv(ruta_vtf("data", "raw", "bloomberg_tasas.csv"), stringsAsFactors = FALSE); effr_d <- effr_d[effr_d$var == "ffr", ]
+effr0 <- effr_d$valor[which.max(as.Date(effr_d$fecha))]
+mes_fut <- seq(as.Date(format(f_dat, "%Y-%m-01")), by = "month", length.out = 6)              # FF1 = mes en curso
+mercado_fut <- setNames(sapply(1:6, function(k) { p <- fx$valor[fx$var == paste0("ff", k)]; if (length(p)) 100 - p else NA }), as.character(mes_fut))
+if (is.na(mercado_fut[1])) mercado_fut[1] <- effr0
+mercado <- approx(as.numeric(mes_fut), mercado_fut, as.numeric(meses), rule = 2)$y            # plana después del último contrato
+# EFFR promedio mensual si la Fed mueve "pasos" (pp) en cada reunión
+REUNION <- as.Date(c("2026-12-10", "2027-01-28", "2027-03-18", "2027-04-29"))                  # día en que cambia la EFFR
+tray <- function(pasos) sapply(meses, function(m) {
+  dias <- seq(m, seq(m, by = "month", length.out = 2)[2] - 1, by = "day")
+  mean(sapply(dias, function(dd) effr0 + sum(pasos[REUNION <= dd])))
+})
+DEF <- list(
+  "Fed +50 pb a enero, luego pausa"       = list(pasos = c(0.25, 0.25, 0, 0), tec = 0),
+  "Fed en pausa (no sube)"                = list(pasos = c(0, 0, 0, 0), tec = 0),
+  "Fed +100 pb a enero, luego pausa"      = list(pasos = c(0.50, 0.50, 0, 0), tec = 0),
+  "Fed +50 pb a enero + corrección tecnológica" = list(pasos = c(0.25, 0.25, 0, 0), tec = -15),
+  "Referencia: +50 pb que nadie esperaba" = list(desv = c(0, 0.25, rep(0.5, 10)), tec = 0))
+MES_TEC <- 3                                  # la corrección tecnológica ocurre en el tercer mes (enero de 2027)
+escala_tec <- function(caida) caida / a_tec[VARS == "sp500_tec"]   # cuántas "unidades" del choque dan esa caída al impacto
+escenario <- function(desv, tec) {
+  ch <- matrix(0, HS, 2); if (tec != 0) ch[MES_TEC, 2] <- escala_tec(tec)
+  b0 <- pronostico(ch)                        # con el choque tecnológico pero sin choques de política
+  for (t in seq_along(desv)) {                # choque de política que deja la EFFR en base + desvío pedido
+    f0 <- pronostico(ch)[t, jF]
+    ch[t, 1] <- (base_f[t, jF] + desv[t] - f0) / s_pol[jF]
+  }
+  e <- pronostico(ch); colnames(e) <- VARS; list(e = e, ch = ch)
+}
+ESC <- NULL; TRAY_EFFR <- data.frame(mes = meses, mercado = mercado)
+for (nm in names(DEF)) {
+  dd <- DEF[[nm]]
+  if (is.null(dd$desv)) { tr_e <- tray(dd$pasos); desv <- (tr_e - mercado)[1:12] } else { desv <- dd$desv; tr_e <- mercado + c(desv, rep(NA, HS - 12)) }
+  r <- escenario(desv, dd$tec)
+  TRAY_EFFR[[nm]] <- tr_e
+  ESC <- rbind(ESC, data.frame(escenario = nm, mes = meses, h = 1:HS, desvio_effr_objetivo_pb = c(desv, rep(NA, HS - 12)) * 100,
+                               do.call(cbind, lapply(VARS, function(k) setNames(data.frame((r$e[, k] - base_f[, k]) * ifelse(k %in% EN_PB, 100, 1)), k)))))
+}
+guardar_tabla(ESC, "escenarios_desvio_vs_mercado")
+guardar_tabla(TRAY_EFFR, "escenarios_trayectoria_effr")
+message(sprintf("Futuros al %s: EFFR %.2f%%; mercado descuenta %.2f%% en %s y %.2f%% en %s", format(f_dat, "%d-%m-%Y"), effr0,
+                mercado[3], format(meses[3], "%b-%Y"), mercado[4], format(meses[4], "%b-%Y")))
+print(data.frame(mes = format(meses[1:8], "%Y-%m"), round(TRAY_EFFR[1:8, -1], 3)), row.names = FALSE)
 res <- ESC[ESC$h %in% c(3, 6, 12, 24), c("escenario", "h", VARS)]
 res[, VARS] <- round(res[, VARS], 2); print(res, row.names = FALSE)
 
-el <- do.call(rbind, lapply(VARS, function(k) data.frame(escenario = ESC$escenario, h = ESC$h, variable = k, valor = ESC[[k]])))
+# Gráfico: variables seleccionadas, desvío respecto de la trayectoria de mercado
+SEL <- c("ffr", "y2y", "y10y", "dxy", "oro", "sp500_tec", "spread_hy", "ip", "unemp", "cpi")
+el <- do.call(rbind, lapply(SEL, function(k) data.frame(escenario = ESC$escenario, h = ESC$h, variable = k, valor = ESC[[k]])))
 el$variable <- factor(paste0(ETQ[el$variable], ifelse(el$variable %in% EN_PB, " (pb)", "")),
-                      levels = paste0(ETQ[VARS], ifelse(VARS %in% EN_PB, " (pb)", "")))
-g <- ggplot(el, aes(h, valor, colour = escenario)) + geom_hline(yintercept = 0, colour = "grey50") + geom_line(linewidth = 0.8) +
-  facet_wrap(~variable, scales = "free_y", ncol = 4) + scale_colour_manual(values = c("#0b3c5d", "#d1495b")) +
-  labs(title = "Escenarios: desvío respecto del pronóstico base", subtitle = "La EFFR queda 50 pb por encima de su trayectoria base durante 12 meses; el escenario combinado agrega estrés tecnológico (2 d.e.) en el mes 3",
-       x = "Meses", y = NULL, colour = NULL) + tema_limpio(9)
-guardar_fig(g, "escenarios_condicionales", ancho = 11, alto = 7.5)
-saveRDS(list(v = v, s_pol = s_pol, a_tec = a_tec, VARS = VARS, ESC = ESC, base_f = base_f, d = d), ruta("output", "modelo_transmision.rds"))
+                      levels = paste0(ETQ[SEL], ifelse(SEL %in% EN_PB, " (pb)", "")))
+el$escenario <- factor(el$escenario, levels = names(DEF))
+g <- ggplot(el, aes(h, valor, colour = escenario, linetype = escenario)) + geom_hline(yintercept = 0, colour = "grey50") + geom_line(linewidth = 0.8) +
+  facet_wrap(~variable, scales = "free_y", ncol = 5) +
+  scale_colour_manual(values = c("#0b3c5d", "#2a9d8f", "#d1495b", "#e9a03b", "#8d99ae")) +
+  scale_linetype_manual(values = c("solid", "solid", "solid", "solid", "dashed")) +
+  labs(title = "Escenarios de la Fed: desvío respecto de lo que hoy descuenta el mercado",
+       subtitle = sprintf("Trayectoria de mercado = futuros de fed funds al %s. Corrección tecnológica: -15%% en el mes %d.", format(f_dat, "%d-%m-%Y"), MES_TEC),
+       x = sprintf("Meses desde %s", format(meses[1] - 1, "%b-%Y")), y = NULL, colour = NULL, linetype = NULL) +
+  tema_limpio(9) + guides(colour = guide_legend(ncol = 2))
+guardar_fig(g, "escenarios_condicionales", ancho = 12, alto = 6.5)
+saveRDS(list(v = v, s_pol = s_pol, a_tec = a_tec, VARS = VARS, ESC = ESC, TRAY = TRAY_EFFR, base_f = base_f, d = d, f_dat = f_dat),
+        ruta("output", "modelo_transmision.rds"))
